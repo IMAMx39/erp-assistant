@@ -8,6 +8,8 @@
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
     env(OLLAMA_EMBED_MODEL): 'nomic-embed-text'
+    env(ANTHROPIC_API_KEY): ''
+    env(ANTHROPIC_MODEL): 'claude-haiku-5-5'
 
 services:
     # default configuration for services in *this* file
@@ -22,3 +24,7 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+    Anthropic\Client:
+        arguments:
+            $apiKey: '%env(ANTHROPIC_API_KEY)%'
