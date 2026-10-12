@@ -66,9 +66,12 @@ class Document
         $this->chunks->clear();
     }
 
-    public function addChunk(int $position, string $heading, string $content): void
+    /**
+     * @param list<float> $embedding
+     */
+    public function addChunk(int $position, string $heading, string $content, array $embedding): void
     {
-        $this->chunks->add(new Chunk($this, $position, $heading, $content));
+        $this->chunks->add(new Chunk($this, $position, $heading, $content, $embedding));
     }
 
     public function getId(): ?int

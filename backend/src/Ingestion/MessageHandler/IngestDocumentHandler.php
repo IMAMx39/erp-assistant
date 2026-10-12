@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Ingestion\MessageHandler;
 
+use App\Embedding\EmbedderInterface;
 use App\Entity\Document;
 use App\Ingestion\Chunker\MarkdownChunker;
+use App\Ingestion\Dto\ChunkData;
 use App\Ingestion\Message\IngestDocument;
 use App\Ingestion\Parser\MarkdownParser;
 use App\Repository\DocumentRepository;
@@ -21,6 +23,7 @@ final class IngestDocumentHandler
     public function __construct(
         private readonly MarkdownParser $parser,
         private readonly MarkdownChunker $chunker,
+        private readonly EmbedderInterface $embedder,
         private readonly DocumentRepository $documentRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly LoggerInterface $logger,
@@ -47,15 +50,22 @@ final class IngestDocumentHandler
             return;
         }
 
-        $document ??= new Document($message->relativePath);
         $parsed = $this->parser->parse($raw, pathinfo($file, \PATHINFO_FILENAME));
+        $chunks = $this->chunker->chunk($parsed);
 
+        // Calculés avant toute modification : si Ollama échoue, le message est rejoué
+        // et le document en base reste dans son état précédent.
+        $embeddings = $this->embedder->embedDocuments(array_map(
+            static fn (ChunkData $chunk): string => $chunk->heading."\n\n".$chunk->content,
+            $chunks,
+        ));
+
+        $document ??= new Document($message->relativePath);
         $document->update($parsed->title, $parsed->module, $parsed->tags, $hash);
         $document->clearChunks();
 
-        $chunks = $this->chunker->chunk($parsed);
-        foreach ($chunks as $chunk) {
-            $document->addChunk($chunk->position, $chunk->heading, $chunk->content);
+        foreach ($chunks as $i => $chunk) {
+            $document->addChunk($chunk->position, $chunk->heading, $chunk->content, $embeddings[$i]);
         }
 
         $this->entityManager->persist($document);

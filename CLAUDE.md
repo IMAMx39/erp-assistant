@@ -19,9 +19,9 @@ Le projet doit rester présentable à un recruteur : code propre, commits régul
 - Backend : **Symfony 7.4**, Doctrine ORM (attributs), Messenger (transport Doctrine).
 - Frontend : Next.js (App Router, TypeScript, Tailwind).
 - **Ollama tourne en natif sur le Mac** (GPU Metal), joignable depuis les conteneurs via `http://host.docker.internal:11434`.
-  Modèle d'embedding : `nomic-embed-text` (768 dimensions).
+  Modèle d'embedding : `nomic-embed-text` (768 dimensions), variable `OLLAMA_EMBED_MODEL`.
 - Génération des réponses : API Anthropic, petit modèle (Claude Haiku) pour limiter les coûts.
-- Stockage vectoriel : bundle Symfony `imamx95/mariadb-vector-bundle` (projet de l'auteur, à valoriser).
+- Stockage vectoriel : bundle Symfony `inm39/mariadb-vector-bundle` (projet de l'auteur, à valoriser ; dépôt `IMAMx39/mariadb-vector-bundle`, copie locale dans `../mariadb-vector-bundle`).
 - Ports : API `localhost:8080`, front `localhost:3000`, MariaDB `localhost:3306`.
 
 ## Commandes
@@ -43,10 +43,12 @@ Toujours préfixer par `php` : `php bin/console`, jamais `bin/console` seul.
 
 ```
 backend/src/
-├── Entity/          # Document, Chunk (+ entités vectorielles)
+├── Entity/          # Document, Chunk (colonne embedding VECTOR(768))
 ├── Repository/
+├── Doctrine/Type/   # type DBAL « vector » (correctif temporaire du bundle)
+├── Embedding/       # EmbedderInterface, OllamaEmbedder
 ├── Ingestion/       # Parser/, Chunker/, Dto/, Message/, MessageHandler/, Command/
-├── Retrieval/       # recherche vectorielle, hybride (FULLTEXT + vecteurs, RRF), reranking
+├── Retrieval/       # VectorRetriever, GET /api/search ; à venir : hybride (FULLTEXT + vecteurs, RRF), reranking
 ├── Chat/            # contrôleur, PromptBuilder, streaming
 ├── Agent/Tool/      # outils de consultation de l'ERP fictif
 ├── Erp/Entity/      # ERP fictif : Article, Entrepot, Emplacement, Stock, Commande…
@@ -83,8 +85,8 @@ Autres dossiers : `corpus/` (documentation Markdown), `evals/` (promptfoo), `fro
 ## Planning (congé de deux semaines)
 
 - [x] **J1** — Stack Docker, dépôt Git, corpus Gestix.
-- [ ] **J2** — Ingestion : entités `Document`/`Chunk`, parser front matter, chunker par `##`, commande `app:corpus:ingest`, handler Messenger idempotent (hash SHA-256). *Code écrit, migration à générer et à tester.*
-- [ ] **J3** — Embeddings via Ollama, stockage avec le bundle MariaDB vector, endpoint de recherche testable.
+- [x] **J2** — Ingestion : entités `Document`/`Chunk`, parser front matter, chunker par `##`, commande `app:corpus:ingest`, handler Messenger idempotent (hash SHA-256).
+- [x] **J3** — Embeddings via Ollama, stockage avec le bundle MariaDB vector, endpoint de recherche testable (`GET /api/search?q=…&limit=5`).
 - [ ] **J4** — Génération (Symfony AI ou client HTTP Anthropic), citation des sources, refus si l'information est absente, streaming (en-tête `X-Accel-Buffering: no` pour nginx).
 - [ ] **J5** — Interface de chat Next.js avec affichage des sources. → **v1 présentable**.
 - [ ] **J6** — Jeu d'évaluation (~50 questions/réponses attendues), promptfoo, mesure de référence. **Prioritaire : ne jamais sacrifier.**
@@ -102,3 +104,6 @@ Hors périmètre pour l'instant : multi-tenant.
 - Le worker ne recharge pas le code : `docker compose restart worker`.
 - `app:corpus:ingest` supprime en base les documents absents du corpus ; un garde-fou bloque l'opération si aucun fichier n'est trouvé.
 - Doctrine insère avant de supprimer lors d'un flush : ne pas ajouter de contrainte unique sur `(document_id, position)` dans `chunk`.
+- Le type `vector` du bundle v1.0.1 écrit en binaire, ce que MariaDB rejette via PDO (« Incorrect vector value ») : `App\Doctrine\Type\VectorType` le remplace (écriture JSON + `VEC_FromText`). À retirer quand le bundle sera corrigé.
+- Le `VECTOR INDEX` s'ajoute à la main dans la migration ; il est déclaré comme index simple sur l'entité (c'est ainsi que DBAL le relit) et `mapping_types: vector` est requis dans `doctrine.yaml`.
+- L'embedding est `NOT NULL` : il est calculé dans le handler avant le flush. Si Ollama ne répond pas, le message part dans la file `failed` après 3 essais (`php bin/console messenger:failed:retry`).

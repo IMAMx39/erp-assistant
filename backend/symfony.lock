@@ -35,6 +35,9 @@
             "migrations/.gitignore"
         ]
     },
+    "inm39/mariadb-vector-bundle": {
+        "version": "v1.0.1"
+    },
     "nelmio/cors-bundle": {
         "version": "2.6",
         "recipe": {

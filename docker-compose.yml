@@ -12,6 +12,7 @@ x-php: &php
     DATABASE_URL: "mysql://${DB_USER}:${DB_PASSWORD}@mariadb:3306/${DB_NAME}?serverVersion=11.8.2-MariaDB&charset=utf8mb4"
     MESSENGER_TRANSPORT_DSN: "doctrine://default?auto_setup=0"
     OLLAMA_URL: ${OLLAMA_URL}
+    OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
     ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
   extra_hosts:
     - "host.docker.internal:host-gateway"
