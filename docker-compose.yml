@@ -5,7 +5,7 @@ x-php: &php
     context: ./docker/php
   working_dir: /var/www/backend
   volumes:
-    - ./backend:/var/www/backends
+    - ./backend:/var/www/backend
     - ./corpus:/var/www/corpus:ro
   environment:
     APP_ENV: dev
