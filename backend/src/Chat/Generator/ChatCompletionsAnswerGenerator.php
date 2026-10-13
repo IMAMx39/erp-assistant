@@ -10,38 +10,42 @@ use App\Chat\Dto\GenerationResult;
 use App\Chat\Exception\GenerationFailedException;
 use App\Chat\PromptBuilder;
 use App\Retrieval\Dto\SearchResult;
-use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * Mistral via l'API Chat Completions en streaming.
+ * Fournisseur compatible avec l'API Chat Completions d'OpenAI, en streaming :
+ * Groq, Mistral, Ollama… Une instance par fournisseur est déclarée dans services.yaml.
  *
  * Pas de citations natives : le modèle cite avec des marqueurs [n] que l'on retire du texte
  * et transforme en événements CITATION. Chaque marqueur clôt un bloc de texte, comme les
  * blocs cités de Claude, pour que l'interface les affiche de la même façon.
  */
-#[AsTaggedItem('mistral')]
-final class MistralAnswerGenerator implements AnswerGeneratorInterface
+final class ChatCompletionsAnswerGenerator implements AnswerGeneratorInterface
 {
-    private const API_URL = 'https://api.mistral.ai/v1/chat/completions';
     private const MAX_TOKENS = 2048;
 
+    /**
+     * @param string  $provider   nom affiché dans les messages d'erreur
+     * @param ?string $keyEnvName   variable de la clé API, null si le fournisseur n'en demande pas
+     * @param bool    $requestUsage envoie stream_options.include_usage (Ollama) ; d'autres refusent ce champ
+     */
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         private readonly PromptBuilder $promptBuilder,
-        #[Autowire('%env(MISTRAL_API_KEY)%')]
-        private readonly string $apiKey,
-        #[Autowire('%env(MISTRAL_MODEL)%')]
+        private readonly string $provider,
+        private readonly string $url,
         private readonly string $model,
+        private readonly string $apiKey = '',
+        private readonly ?string $keyEnvName = null,
+        private readonly bool $requestUsage = false,
     ) {
     }
 
     public function generate(string $question, array $sources): \Generator
     {
-        if ($this->apiKey === '') {
-            throw new GenerationFailedException('Clé API Mistral absente (MISTRAL_API_KEY).', 500);
+        if ($this->keyEnvName !== null && $this->apiKey === '') {
+            throw new GenerationFailedException(sprintf('Clé API %s absente (%s).', $this->provider, $this->keyEnvName), 500);
         }
 
         $parser = new CitationMarkerParser();
@@ -51,28 +55,34 @@ final class MistralAnswerGenerator implements AnswerGeneratorInterface
         $outputTokens = 0;
 
         try {
-            $response = $this->httpClient->request('POST', self::API_URL, [
-                'auth_bearer' => $this->apiKey,
-                'headers' => ['Accept' => 'text/event-stream'],
-                'json' => [
-                    'model' => $this->model,
-                    'stream' => true,
-                    'temperature' => 0.2,
-                    'max_tokens' => self::MAX_TOKENS,
-                    'messages' => [
-                        ['role' => 'system', 'content' => $this->promptBuilder->system(inlineMarkers: true)],
-                        ['role' => 'user', 'content' => $this->promptBuilder->numberedSourcesMessage($question, $sources)],
-                    ],
+            $body = [
+                'model' => $this->model,
+                'stream' => true,
+                'temperature' => 0.2,
+                'max_tokens' => self::MAX_TOKENS,
+                'messages' => [
+                    ['role' => 'system', 'content' => $this->promptBuilder->system(inlineMarkers: true)],
+                    ['role' => 'user', 'content' => $this->promptBuilder->numberedSourcesMessage($question, $sources)],
                 ],
+            ];
+            if ($this->requestUsage) {
+                $body['stream_options'] = ['include_usage' => true];
+            }
+
+            $response = $this->httpClient->request('POST', $this->url, [
+                'auth_bearer' => $this->apiKey !== '' ? $this->apiKey : null,
+                'headers' => ['Accept' => 'text/event-stream'],
+                'json' => $body,
                 'timeout' => 60,
             ]);
 
             $status = $response->getStatusCode();
             if ($status !== 200) {
                 throw match ($status) {
-                    401 => new GenerationFailedException('Clé API Mistral invalide (MISTRAL_API_KEY).', 500),
-                    429 => new GenerationFailedException('Trop de demandes en cours, réessayez dans quelques instants.', 503),
-                    default => new GenerationFailedException(sprintf('Mistral a renvoyé une erreur (HTTP %d).', $status), 502),
+                    401 => new GenerationFailedException(sprintf('Clé API %s invalide (%s).', $this->provider, $this->keyEnvName ?? 'aucune clé attendue'), 500),
+                    404 => new GenerationFailedException(sprintf('Modèle « %s » introuvable chez %s.', $this->model, $this->provider), 502),
+                    429 => new GenerationFailedException(sprintf('Limite de requêtes %s atteinte, réessayez dans quelques instants.', $this->provider), 503),
+                    default => new GenerationFailedException(sprintf('%s a renvoyé une erreur (HTTP %d).', $this->provider, $status), 502),
                 };
             }
 
@@ -88,17 +98,19 @@ final class MistralAnswerGenerator implements AnswerGeneratorInterface
                         continue;
                     }
 
-                    /** @var array{choices?: list<array{delta?: array{content?: mixed}, finish_reason?: ?string}>, usage?: array{prompt_tokens?: int, completion_tokens?: int}} $payload */
+                    /** @var array{choices?: list<array{delta?: array{content?: mixed}, finish_reason?: ?string}>, usage?: array{prompt_tokens?: int, completion_tokens?: int}, x_groq?: array{usage?: array{prompt_tokens?: int, completion_tokens?: int}}} $payload */
                     $payload = json_decode($data, true, flags: \JSON_THROW_ON_ERROR);
                     $choice = $payload['choices'][0] ?? [];
+                    // Groq place les tokens consommés dans x_groq.usage.
+                    $usage = $payload['usage'] ?? $payload['x_groq']['usage'] ?? [];
 
                     foreach ($parser->feed($this->text($choice['delta']['content'] ?? '')) as $token) {
                         yield from $this->events($token, $block, $sources);
                     }
 
                     $stopReason = $choice['finish_reason'] ?? $stopReason;
-                    $inputTokens = $payload['usage']['prompt_tokens'] ?? $inputTokens;
-                    $outputTokens = $payload['usage']['completion_tokens'] ?? $outputTokens;
+                    $inputTokens = $usage['prompt_tokens'] ?? $inputTokens;
+                    $outputTokens = $usage['completion_tokens'] ?? $outputTokens;
                 }
             }
 
@@ -106,9 +118,9 @@ final class MistralAnswerGenerator implements AnswerGeneratorInterface
                 yield from $this->events($token, $block, $sources);
             }
         } catch (TransportExceptionInterface $e) {
-            throw new GenerationFailedException('Le service Mistral est injoignable.', 503, $e);
+            throw new GenerationFailedException(sprintf('Le service %s est injoignable.', $this->provider), 503, $e);
         } catch (\JsonException $e) {
-            throw new GenerationFailedException('Réponse illisible du service Mistral.', 502, $e);
+            throw new GenerationFailedException(sprintf('Réponse illisible du service %s.', $this->provider), 502, $e);
         }
 
         return new GenerationResult($this->model, $stopReason, $inputTokens, $outputTokens);

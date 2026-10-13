@@ -11,8 +11,11 @@ parameters:
     env(ANTHROPIC_API_KEY): ''
     env(ANTHROPIC_MODEL): 'claude-haiku-5-5'
     env(LLM_PROVIDER): 'anthropic'
+    env(GROQ_API_KEY): ''
+    env(GROQ_MODEL): 'qwen/qwen3.8-27b'
     env(MISTRAL_API_KEY): ''
     env(MISTRAL_MODEL): 'mistral-small-latest'
+    env(OLLAMA_CHAT_MODEL): 'llama3.2:3b'
 
 services:
     # default configuration for services in *this* file
@@ -24,6 +27,8 @@ services:
     # this creates a service per class whose id is the fully-qualified class name
     App\:
         resource: '../src/'
+        # Instancié une fois par fournisseur, plus bas.
+        exclude: '../src/Chat/Generator/ChatCompletionsAnswerGenerator.php'
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
@@ -31,3 +36,37 @@ services:
     Anthropic\Client:
         arguments:
             $apiKey: '%env(ANTHROPIC_API_KEY)%'
+
+    # Fournisseurs de LLM compatibles Chat Completions, choisis par LLM_PROVIDER (clé « key »).
+    app.answer_generator.groq:
+        class: App\Chat\Generator\ChatCompletionsAnswerGenerator
+        # Sinon l'autoconfiguration ajoute une seconde étiquette, sans « key ».
+        autoconfigure: false
+        arguments:
+            $provider: 'Groq'
+            $url: 'https://api.groq.com/openai/v1/chat/completions'
+            $model: '%env(GROQ_MODEL)%'
+            $apiKey: '%env(GROQ_API_KEY)%'
+            $keyEnvName: 'GROQ_API_KEY'
+        tags: [{ name: App\Chat\Generator\AnswerGeneratorInterface, key: groq }]
+
+    app.answer_generator.mistral:
+        class: App\Chat\Generator\ChatCompletionsAnswerGenerator
+        autoconfigure: false
+        arguments:
+            $provider: 'Mistral'
+            $url: 'https://api.mistral.ai/v1/chat/completions'
+            $model: '%env(MISTRAL_MODEL)%'
+            $apiKey: '%env(MISTRAL_API_KEY)%'
+            $keyEnvName: 'MISTRAL_API_KEY'
+        tags: [{ name: App\Chat\Generator\AnswerGeneratorInterface, key: mistral }]
+
+    app.answer_generator.ollama:
+        class: App\Chat\Generator\ChatCompletionsAnswerGenerator
+        autoconfigure: false
+        arguments:
+            $provider: 'Ollama'
+            $url: '%env(OLLAMA_URL)%/v1/chat/completions'
+            $model: '%env(OLLAMA_CHAT_MODEL)%'
+            $requestUsage: true
+        tags: [{ name: App\Chat\Generator\AnswerGeneratorInterface, key: ollama }]

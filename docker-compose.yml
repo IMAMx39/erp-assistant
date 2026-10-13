@@ -16,8 +16,11 @@ x-php: &php
     ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-5-5}
     LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+    GROQ_API_KEY: ${GROQ_API_KEY:-}
+    GROQ_MODEL: ${GROQ_MODEL:-qwen/qwen3.8-27b}
     MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
     MISTRAL_MODEL: ${MISTRAL_MODEL:-mistral-small-latest}
+    OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-llama3.2:3b}
   extra_hosts:
     - "host.docker.internal:host-gateway"
   depends_on:

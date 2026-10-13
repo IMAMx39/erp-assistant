@@ -15,7 +15,7 @@ use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
 
 /**
  * RAG : recherche des extraits pertinents, puis rédaction de la réponse citée par le LLM
- * choisi avec LLM_PROVIDER (anthropic ou mistral).
+ * choisi avec LLM_PROVIDER (anthropic, groq, mistral ou ollama).
  */
 final class ChatService
 {
@@ -23,7 +23,7 @@ final class ChatService
 
     public function __construct(
         private readonly VectorRetriever $retriever,
-        #[AutowireLocator(AnswerGeneratorInterface::class)]
+        #[AutowireLocator(AnswerGeneratorInterface::class, indexAttribute: 'key')]
         private readonly ContainerInterface $generators,
         #[Autowire('%env(LLM_PROVIDER)%')]
         private readonly string $provider,
@@ -111,7 +111,7 @@ final class ChatService
     private function generator(): AnswerGeneratorInterface
     {
         if (!$this->generators->has($this->provider)) {
-            throw new GenerationFailedException(sprintf('Fournisseur de LLM inconnu : « %s » (LLM_PROVIDER = anthropic ou mistral).', $this->provider), 500);
+            throw new GenerationFailedException(sprintf('Fournisseur de LLM inconnu : « %s » (LLM_PROVIDER = anthropic, groq, mistral ou ollama).', $this->provider), 500);
         }
 
         return $this->generators->get($this->provider);
