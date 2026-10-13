@@ -16,7 +16,11 @@ export function SourcesPanel({ sources, citations, activeSource, onSelectSource 
     <ol className="space-y-2">
       {sources.map((source, i) => {
         const number = i + 1;
-        const quotes = citations.filter((c) => c.source === number).map((c) => c.citedText);
+        const cited = citations.some((c) => c.source === number);
+        // Les fournisseurs sans citations natives ne renvoient pas l'extrait exact (citedText vide).
+        const quotes = [
+          ...new Set(citations.filter((c) => c.source === number && c.citedText !== "").map((c) => c.citedText)),
+        ];
         const active = activeSource === number;
         const section = source.heading.split(" > ").slice(1).join(" › ");
 
@@ -29,12 +33,12 @@ export function SourcesPanel({ sources, citations, activeSource, onSelectSource 
                 active
                   ? "border-teal-500 bg-teal-50/60 dark:border-teal-600 dark:bg-teal-950/30"
                   : "border-zinc-200 hover:border-zinc-300 dark:border-zinc-800 dark:hover:border-zinc-700"
-              } ${quotes.length === 0 && !active ? "opacity-60" : ""}`}
+              } ${!cited && !active ? "opacity-60" : ""}`}
             >
               <div className="flex items-start gap-2">
                 <span
                   className={`mt-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded text-[11px] font-semibold ${
-                    quotes.length > 0
+                    cited
                       ? "bg-teal-600 text-white"
                       : "bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
                   }`}
@@ -46,7 +50,7 @@ export function SourcesPanel({ sources, citations, activeSource, onSelectSource 
                   {section && <p className="text-sm text-zinc-600 dark:text-zinc-400">{section}</p>}
                   <p className="mt-1 truncate font-mono text-xs text-zinc-500">{source.documentPath}</p>
                 </div>
-                {quotes.length > 0 && (
+                {cited && (
                   <span className="shrink-0 text-xs font-medium text-teal-700 dark:text-teal-300">citée</span>
                 )}
               </div>
@@ -54,7 +58,7 @@ export function SourcesPanel({ sources, citations, activeSource, onSelectSource 
               {active && (
                 <div className="mt-3 space-y-2 border-t border-zinc-200 pt-3 text-sm dark:border-zinc-800">
                   {quotes.length > 0 ? (
-                    [...new Set(quotes)].map((quote) => (
+                    quotes.map((quote) => (
                       <blockquote
                         key={quote}
                         className="border-l-2 border-teal-500 pl-3 text-zinc-700 dark:text-zinc-300"

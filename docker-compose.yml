@@ -15,6 +15,9 @@ x-php: &php
     OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
     ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-5-5}
+    LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+    MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+    MISTRAL_MODEL: ${MISTRAL_MODEL:-mistral-small-latest}
   extra_hosts:
     - "host.docker.internal:host-gateway"
   depends_on:

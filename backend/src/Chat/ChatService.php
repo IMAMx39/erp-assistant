@@ -4,34 +4,29 @@ declare(strict_types=1);
 
 namespace App\Chat;
 
-use Anthropic\Client;
-use Anthropic\Messages\CitationCharLocation;
-use Anthropic\Messages\CitationsDelta;
-use Anthropic\Messages\RawContentBlockDeltaEvent;
-use Anthropic\Messages\RawMessageDeltaEvent;
-use Anthropic\Messages\RawMessageStartEvent;
-use Anthropic\Messages\TextDelta;
 use App\Chat\Dto\ChatAnswer;
 use App\Chat\Dto\ChatEvent;
-use App\Chat\Dto\Citation;
-use App\Retrieval\Dto\SearchResult;
+use App\Chat\Exception\GenerationFailedException;
+use App\Chat\Generator\AnswerGeneratorInterface;
 use App\Retrieval\VectorRetriever;
+use Psr\Container\ContainerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
 
 /**
- * RAG : recherche des extraits pertinents, puis génération de la réponse citée par Claude.
+ * RAG : recherche des extraits pertinents, puis rédaction de la réponse citée par le LLM
+ * choisi avec LLM_PROVIDER (anthropic ou mistral).
  */
 final class ChatService
 {
     private const RETRIEVAL_LIMIT = 5;
-    private const MAX_TOKENS = 16000;
 
     public function __construct(
-        private readonly Client $anthropic,
         private readonly VectorRetriever $retriever,
-        private readonly PromptBuilder $promptBuilder,
-        #[Autowire('%env(ANTHROPIC_MODEL)%')]
-        private readonly string $model,
+        #[AutowireLocator(AnswerGeneratorInterface::class)]
+        private readonly ContainerInterface $generators,
+        #[Autowire('%env(LLM_PROVIDER)%')]
+        private readonly string $provider,
     ) {
     }
 
@@ -39,65 +34,56 @@ final class ChatService
      * Génère la réponse au fil de l'eau : sources, morceaux de texte, citations, puis fin.
      *
      * @return \Generator<int, ChatEvent>
+     *
+     * @throws GenerationFailedException
      */
     public function stream(string $question): \Generator
     {
+        $generator = $this->generator();
         $sources = $this->retriever->search($question, self::RETRIEVAL_LIMIT);
         yield new ChatEvent(ChatEvent::SOURCES, $sources);
 
         // Index vide : inutile d'appeler le modèle.
         if ($sources === []) {
             yield new ChatEvent(ChatEvent::DELTA, ['block' => 0, 'text' => PromptBuilder::NOT_FOUND_ANSWER]);
-            yield new ChatEvent(ChatEvent::DONE, $this->done(false, null, 0, 0));
+            yield new ChatEvent(ChatEvent::DONE, $this->done(false, null, null, 0, 0));
 
             return;
         }
 
-        $stream = $this->anthropic->messages->createStream(
-            maxTokens: self::MAX_TOKENS,
-            messages: $this->promptBuilder->messages($question, $sources),
-            model: $this->model,
-            // Questions-réponses sur des extraits courts : peu de réflexion nécessaire.
-            outputConfig: ['effort' => 'low'],
-            system: $this->promptBuilder->system(),
-        );
-
         $answer = '';
-        $stopReason = null;
-        $inputTokens = 0;
-        $outputTokens = 0;
+        $generation = $generator->generate($question, $sources);
 
-        foreach ($stream as $event) {
-            if ($event instanceof RawMessageStartEvent) {
-                $inputTokens = (int) $event->message->usage->inputTokens;
-            } elseif ($event instanceof RawContentBlockDeltaEvent && $event->delta instanceof TextDelta) {
-                $answer .= $event->delta->text;
-                yield new ChatEvent(ChatEvent::DELTA, ['block' => $event->index, 'text' => $event->delta->text]);
-            } elseif ($event instanceof RawContentBlockDeltaEvent && $event->delta instanceof CitationsDelta) {
-                $citation = $this->citation($event->delta, $event->index, $sources);
-                if ($citation !== null) {
-                    yield new ChatEvent(ChatEvent::CITATION, $citation);
-                }
-            } elseif ($event instanceof RawMessageDeltaEvent) {
-                $stopReason = $event->delta->stopReason;
-                $outputTokens = $event->usage->outputTokens;
+        foreach ($generation as $event) {
+            if ($event->type === ChatEvent::DELTA) {
+                $answer .= $event->data['text'];
             }
+            yield $event;
         }
 
-        $answered = $stopReason !== 'refusal' && !str_contains($answer, PromptBuilder::NOT_FOUND_ANSWER);
+        $result = $generation->getReturn();
+        $answered = $result->stopReason !== 'refusal' && !str_contains($answer, PromptBuilder::NOT_FOUND_ANSWER);
 
-        yield new ChatEvent(ChatEvent::DONE, $this->done($answered, $stopReason, $inputTokens, $outputTokens));
+        yield new ChatEvent(ChatEvent::DONE, $this->done(
+            $answered,
+            $result->model,
+            $result->stopReason,
+            $result->inputTokens,
+            $result->outputTokens,
+        ));
     }
 
     /**
      * Même génération, rassemblée en une seule réponse (API JSON, évaluations).
+     *
+     * @throws GenerationFailedException
      */
     public function ask(string $question): ChatAnswer
     {
         $sources = [];
         $answer = '';
         $citations = [];
-        $done = $this->done(false, null, 0, 0);
+        $done = $this->done(false, null, null, 0, 0);
 
         foreach ($this->stream($question) as $event) {
             match ($event->type) {
@@ -115,45 +101,30 @@ final class ChatService
             $done['answered'],
             $citations,
             $sources,
+            $done['model'],
             $done['stopReason'],
             $done['inputTokens'],
             $done['outputTokens'],
         );
     }
 
-    /**
-     * @param list<SearchResult> $sources
-     */
-    private function citation(CitationsDelta $delta, int $block, array $sources): ?Citation
+    private function generator(): AnswerGeneratorInterface
     {
-        $location = $delta->citation;
-
-        // Les documents texte produisent des citations par position de caractères.
-        if (!$location instanceof CitationCharLocation) {
-            return null;
+        if (!$this->generators->has($this->provider)) {
+            throw new GenerationFailedException(sprintf('Fournisseur de LLM inconnu : « %s » (LLM_PROVIDER = anthropic ou mistral).', $this->provider), 500);
         }
 
-        $source = $sources[$location->documentIndex] ?? null;
-        if ($source === null) {
-            return null;
-        }
-
-        return new Citation(
-            $location->documentIndex + 1,
-            $source->chunkId,
-            $source->documentPath,
-            $location->citedText,
-            $block,
-        );
+        return $this->generators->get($this->provider);
     }
 
     /**
-     * @return array{answered: bool, stopReason: ?string, inputTokens: int, outputTokens: int}
+     * @return array{answered: bool, model: ?string, stopReason: ?string, inputTokens: int, outputTokens: int}
      */
-    private function done(bool $answered, ?string $stopReason, int $inputTokens, int $outputTokens): array
+    private function done(bool $answered, ?string $model, ?string $stopReason, int $inputTokens, int $outputTokens): array
     {
         return [
             'answered' => $answered,
+            'model' => $model,
             'stopReason' => $stopReason,
             'inputTokens' => $inputTokens,
             'outputTokens' => $outputTokens,

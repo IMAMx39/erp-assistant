@@ -20,7 +20,9 @@ Le projet doit rester présentable à un recruteur : code propre, commits régul
 - Frontend : Next.js (App Router, TypeScript, Tailwind).
 - **Ollama tourne en natif sur le Mac** (GPU Metal), joignable depuis les conteneurs via `http://host.docker.internal:11434`.
   Modèle d'embedding : `nomic-embed-text` (768 dimensions), variable `OLLAMA_EMBED_MODEL`.
-- Génération des réponses : SDK PHP officiel `anthropic-ai/sdk`, modèle `claude-haiku-5-5` (variable `ANTHROPIC_MODEL`), citations natives de l'API.
+- Génération des réponses, fournisseur choisi par `LLM_PROVIDER` (`anthropic` par défaut, ou `mistral`) :
+  - Anthropic : SDK PHP officiel `anthropic-ai/sdk`, modèle `claude-haiku-5-5` (`ANTHROPIC_MODEL`), citations natives de l'API ;
+  - Mistral : API Chat Completions via `symfony/http-client`, modèle `mistral-small-latest` (`MISTRAL_MODEL`, `MISTRAL_API_KEY`), citations par marqueurs `[n]` analysés dans le flux.
 - Stockage vectoriel : bundle Symfony `inm39/mariadb-vector-bundle` (projet de l'auteur, à valoriser ; dépôt `IMAMx39/mariadb-vector-bundle`, copie locale dans `../mariadb-vector-bundle`).
 - Ports : API `localhost:8080`, front `localhost:3000`, MariaDB `localhost:3306`.
 
@@ -49,7 +51,7 @@ backend/src/
 ├── Embedding/       # EmbedderInterface, OllamaEmbedder
 ├── Ingestion/       # Parser/, Chunker/, Dto/, Message/, MessageHandler/, Command/
 ├── Retrieval/       # VectorRetriever, GET /api/search ; à venir : hybride (FULLTEXT + vecteurs, RRF), reranking
-├── Chat/            # ChatService (RAG), PromptBuilder, POST /api/chat (JSON) et /api/chat/stream (SSE)
+├── Chat/            # ChatService (RAG), PromptBuilder, Generator/ (Anthropic, Mistral), POST /api/chat (JSON) et /api/chat/stream (SSE)
 ├── Agent/Tool/      # outils de consultation de l'ERP fictif
 ├── Erp/Entity/      # ERP fictif : Article, Entrepot, Emplacement, Stock, Commande…
 └── Mcp/             # serveur MCP

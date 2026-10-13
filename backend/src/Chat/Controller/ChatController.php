@@ -4,12 +4,9 @@ declare(strict_types=1);
 
 namespace App\Chat\Controller;
 
-use Anthropic\Core\Exceptions\AnthropicException;
-use Anthropic\Core\Exceptions\APIConnectionException;
-use Anthropic\Core\Exceptions\AuthenticationException;
-use Anthropic\Core\Exceptions\RateLimitException;
 use App\Chat\ChatService;
 use App\Chat\Dto\ChatRequest;
+use App\Chat\Exception\GenerationFailedException;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -31,7 +28,7 @@ final class ChatController extends AbstractController
     {
         try {
             return $this->json($this->chatService->ask($request->question));
-        } catch (AnthropicException|HttpClientException $e) {
+        } catch (GenerationFailedException|HttpClientException $e) {
             [$status, $message] = $this->failure($e);
 
             return $this->json(['error' => $message], $status);
@@ -49,7 +46,7 @@ final class ChatController extends AbstractController
                 foreach ($this->chatService->stream($request->question) as $event) {
                     $this->sendEvent($event->type, $event->data);
                 }
-            } catch (AnthropicException|HttpClientException $e) {
+            } catch (GenerationFailedException|HttpClientException $e) {
                 $this->sendEvent('error', ['message' => $this->failure($e)[1]]);
             }
         });
@@ -76,16 +73,14 @@ final class ChatController extends AbstractController
     /**
      * @return array{int, string} code HTTP et message affichable
      */
-    private function failure(AnthropicException|HttpClientException $e): array
+    private function failure(GenerationFailedException|HttpClientException $e): array
     {
         $this->logger->error('Échec de la génération de réponse', ['exception' => $e]);
 
-        return match (true) {
-            $e instanceof HttpClientException => [503, 'La recherche dans la documentation est indisponible (Ollama injoignable).'],
-            $e instanceof AuthenticationException => [500, 'Clé API Anthropic absente ou invalide (ANTHROPIC_API_KEY).'],
-            $e instanceof RateLimitException => [503, 'Trop de demandes en cours, réessayez dans quelques instants.'],
-            $e instanceof APIConnectionException => [503, 'Le service de génération est injoignable.'],
-            default => [502, 'Le service de génération a renvoyé une erreur.'],
-        };
+        if ($e instanceof GenerationFailedException) {
+            return [$e->statusCode, $e->getMessage()];
+        }
+
+        return [503, 'La recherche dans la documentation est indisponible (Ollama injoignable).'];
     }
 }

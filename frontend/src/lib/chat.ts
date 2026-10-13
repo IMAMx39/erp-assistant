@@ -24,6 +24,7 @@ export type Citation = {
 
 export type Done = {
   answered: boolean;
+  model: string | null;
   stopReason: string | null;
   inputTokens: number;
   outputTokens: number;

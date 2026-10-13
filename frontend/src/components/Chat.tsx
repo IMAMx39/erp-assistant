@@ -128,6 +128,7 @@ export function Chat() {
                     )}
                     {turn.done && (turn.done.inputTokens > 0 || turn.done.outputTokens > 0) && (
                       <p className="text-xs text-zinc-400">
+                        {turn.done.model && `${turn.done.model} · `}
                         {turn.done.inputTokens} tokens en entrée · {turn.done.outputTokens} en sortie
                       </p>
                     )}

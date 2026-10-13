@@ -18,6 +18,7 @@ final readonly class ChatAnswer
         public bool $answered,
         public array $citations,
         public array $sources,
+        public ?string $model,
         public ?string $stopReason,
         public int $inputTokens,
         public int $outputTokens,
