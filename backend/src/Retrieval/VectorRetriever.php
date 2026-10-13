@@ -34,17 +34,9 @@ final class VectorRetriever
         return array_map(static function (array $row): SearchResult {
             /** @var Chunk $chunk */
             $chunk = $row[0];
-            $document = $chunk->getDocument();
+            $distance = (float) $row['distance'];
 
-            return new SearchResult(
-                (int) $chunk->getId(),
-                $document->getPath(),
-                $document->getTitle(),
-                $document->getModule(),
-                $chunk->getHeading(),
-                $chunk->getContent(),
-                (float) $row['distance'],
-            );
+            return SearchResult::fromChunk($chunk, $distance, 1 - $distance);
         }, $rows);
     }
 }

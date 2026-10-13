@@ -1,7 +1,7 @@
 include .env
 export
 
-.PHONY: init init-backend init-frontend up down logs sh db ollama-pull eval
+.PHONY: init init-backend init-frontend up down logs sh db ollama-pull eval eval-retrieval
 
 init: init-backend init-frontend
 
@@ -35,8 +35,20 @@ ollama-pull:
 # Évaluation du RAG sur evals/dataset.yaml. promptfoo sort en erreur dès qu'un test échoue :
 # le « - » laisse quand même produire la synthèse (evals/results/latest.md).
 # Offre gratuite de Groq : 8 000 tokens/min et ~750 tokens par question, d'où une question toutes les 6 s.
+# MODE : mode de recherche évalué (vector, hybrid, hybrid_rerank).
 EVAL_DELAY ?= 6000
+MODE ?= vector
 eval:
-	-docker compose --profile evals run --rm evals eval -c promptfooconfig.yaml --no-cache -j 1 --delay $(EVAL_DELAY) -o results/latest.json -o results/latest.html
+	-docker compose --profile evals run --rm evals eval -c promptfooconfig.yaml --no-cache -j 1 --delay $(EVAL_DELAY) --var mode=$(MODE) -o results/latest.json -o results/latest.html
 	docker compose --profile evals run --rm --no-deps --entrypoint node evals summarize.mjs results/latest.json > evals/results/latest.md
 	@cat evals/results/latest.md
+
+# Recherche seule, par section, sans génération (questions hors corpus exclues).
+# Sans délai pour vector et hybrid ; hybrid_rerank appelle Groq : RETRIEVAL_DELAY=12000.
+# LIMIT : nombre d'extraits demandés (5 comme le chat ; 10 = vivier soumis au reclassement).
+RETRIEVAL_DELAY ?= 0
+LIMIT ?= 5
+eval-retrieval:
+	-docker compose --profile evals run --rm evals eval -c retrieval.yaml --no-cache -j 1 --delay $(RETRIEVAL_DELAY) --var mode=$(MODE) --var limit=$(LIMIT) --filter-pattern '^(?!refus-)' -o results/retrieval-$(MODE)-$(LIMIT).json
+	docker compose --profile evals run --rm --no-deps --entrypoint node evals summarize-retrieval.mjs results/retrieval-$(MODE)-$(LIMIT).json > evals/results/retrieval-$(MODE)-$(LIMIT).md
+	@cat evals/results/retrieval-$(MODE)-$(LIMIT).md

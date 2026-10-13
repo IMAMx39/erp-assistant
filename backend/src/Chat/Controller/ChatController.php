@@ -27,7 +27,7 @@ final class ChatController extends AbstractController
     public function ask(#[MapRequestPayload] ChatRequest $request): JsonResponse
     {
         try {
-            return $this->json($this->chatService->ask($request->question));
+            return $this->json($this->chatService->ask($request->question, $request->retrievalMode()));
         } catch (GenerationFailedException|HttpClientException $e) {
             [$status, $message] = $this->failure($e);
 
@@ -43,7 +43,7 @@ final class ChatController extends AbstractController
     {
         $response = new StreamedResponse(function () use ($request): void {
             try {
-                foreach ($this->chatService->stream($request->question) as $event) {
+                foreach ($this->chatService->stream($request->question, $request->retrievalMode()) as $event) {
                     $this->sendEvent($event->type, $event->data);
                 }
             } catch (GenerationFailedException|HttpClientException $e) {

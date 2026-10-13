@@ -8,7 +8,8 @@ use App\Chat\Dto\ChatAnswer;
 use App\Chat\Dto\ChatEvent;
 use App\Chat\Exception\GenerationFailedException;
 use App\Chat\Generator\AnswerGeneratorInterface;
-use App\Retrieval\VectorRetriever;
+use App\Retrieval\DocumentRetriever;
+use App\Retrieval\RetrievalMode;
 use Psr\Container\ContainerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
@@ -22,7 +23,7 @@ final class ChatService
     private const RETRIEVAL_LIMIT = 5;
 
     public function __construct(
-        private readonly VectorRetriever $retriever,
+        private readonly DocumentRetriever $retriever,
         #[AutowireLocator(AnswerGeneratorInterface::class, indexAttribute: 'key')]
         private readonly ContainerInterface $generators,
         #[Autowire('%env(LLM_PROVIDER)%')]
@@ -37,10 +38,10 @@ final class ChatService
      *
      * @throws GenerationFailedException
      */
-    public function stream(string $question): \Generator
+    public function stream(string $question, ?RetrievalMode $mode = null): \Generator
     {
         $generator = $this->generator();
-        $sources = $this->retriever->search($question, self::RETRIEVAL_LIMIT);
+        $sources = $this->retriever->search($question, self::RETRIEVAL_LIMIT, $mode);
         yield new ChatEvent(ChatEvent::SOURCES, $sources);
 
         // Index vide : inutile d'appeler le modèle.
@@ -78,14 +79,14 @@ final class ChatService
      *
      * @throws GenerationFailedException
      */
-    public function ask(string $question): ChatAnswer
+    public function ask(string $question, ?RetrievalMode $mode = null): ChatAnswer
     {
         $sources = [];
         $answer = '';
         $citations = [];
         $done = $this->done(false, null, null, 0, 0);
 
-        foreach ($this->stream($question) as $event) {
+        foreach ($this->stream($question, $mode) as $event) {
             match ($event->type) {
                 ChatEvent::SOURCES => $sources = $event->data,
                 ChatEvent::DELTA => $answer .= $event->data['text'],

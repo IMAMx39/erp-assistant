@@ -5,6 +5,8 @@
 #             du corpus), refusal (information absente : refus attendu)
 #   question  question posée à POST /api/chat
 #   sources   pages du corpus acceptées comme source (au moins une doit être retrouvée / citée)
+#   sections  intitulés de chunk (« Titre > Section ») qui contiennent la réponse : au moins un doit
+#             figurer parmi les extraits retrouvés (mesure de la recherche, make eval-retrieval)
 #   facts     faits attendus dans la réponse : tous sont requis ; chaque fait est une liste de variantes
 #             acceptées. Comparaison sans casse, sans accents, espaces normalisées (« 5 000 » = « 5000 »).
 #
@@ -17,6 +19,8 @@
     category: fact
     question: Qui peut clôturer un inventaire ?
     sources: [stocks/inventaire.md]
+    sections:
+      - "Réaliser et clôturer un inventaire > Conditions de clôture"
     facts:
       - [responsable logistique]
 
@@ -25,6 +29,8 @@
     category: fact
     question: Quel écart sur une ligne d'inventaire déclenche un recomptage ?
     sources: [stocks/inventaire.md]
+    sections:
+      - "Réaliser et clôturer un inventaire > Déroulement"
     facts:
       - ["10 %", "10%", "dix pour cent"]
 
@@ -33,6 +39,8 @@
     category: fact
     question: À quelle fréquence un inventaire complet est-il obligatoire ?
     sources: [stocks/inventaire.md]
+    sections:
+      - "Réaliser et clôturer un inventaire > Types d'inventaire"
     facts:
       - [une fois par an, par an, annuel, chaque annee]
 
@@ -41,6 +49,8 @@
     category: fact
     question: Peut-on rouvrir un inventaire déjà clôturé ?
     sources: [stocks/inventaire.md]
+    sections:
+      - "Réaliser et clôturer un inventaire > Conditions de clôture"
     facts:
       - [ne peut pas, impossible, pas possible, jamais]
 
@@ -49,6 +59,8 @@
     category: fact
     question: À partir de quel montant une commande fournisseur doit-elle être validée par un Administrateur ?
     sources: [achats/commande-fournisseur.md]
+    sections:
+      - "Commandes fournisseurs > Circuit de validation"
     facts:
       - ["5000"]
 
@@ -57,6 +69,8 @@
     category: fact
     question: Jusqu'à quand peut-on annuler une commande fournisseur ?
     sources: [achats/commande-fournisseur.md]
+    sections:
+      - "Commandes fournisseurs > Statuts"
     facts:
       - [reception]
 
@@ -65,6 +79,8 @@
     category: fact
     question: Quels sont les statuts successifs d'une commande fournisseur ?
     sources: [achats/commande-fournisseur.md]
+    sections:
+      - "Commandes fournisseurs > Statuts"
     facts:
       - [brouillon]
       - [validee]
@@ -77,6 +93,9 @@
     category: fact
     question: Sur quel emplacement entre la marchandise lors de la validation d'une réception ?
     sources: [achats/reception.md, stocks/entrepots-et-emplacements.md]
+    sections:
+      - "Réceptionner une commande fournisseur > Étapes"
+      - "Entrepôts et emplacements > Emplacements"
     facts:
       - [quai]
 
@@ -85,6 +104,8 @@
     category: fact
     question: Au-delà de quel surplus une quantité reçue est-elle bloquée à la réception ?
     sources: [achats/reception.md]
+    sections:
+      - "Réceptionner une commande fournisseur > Écarts et litiges"
     facts:
       - ["5 %", "5%", "cinq pour cent"]
 
@@ -93,6 +114,8 @@
     category: fact
     question: Que devient un article endommagé lors de la réception ?
     sources: [achats/reception.md]
+    sections:
+      - "Réceptionner une commande fournisseur > Écarts et litiges"
     facts:
       - [litige]
 
@@ -101,6 +124,8 @@
     category: fact
     question: Combien de codes-barres un article peut-il avoir au maximum ?
     sources: [articles/codes-barres.md]
+    sections:
+      - "Codes-barres et terminaux de scan"
     facts:
       - ["5 codes", "cinq codes", "jusqu'a 5", "maximum 5", "5 maximum", "au maximum 5"]
 
@@ -109,6 +134,8 @@
     category: fact
     question: Quels formats de codes-barres sont acceptés par Gestix ?
     sources: [articles/codes-barres.md]
+    sections:
+      - "Codes-barres et terminaux de scan"
     facts:
       - [ean-13, ean13, ean 13]
       - [ean-8, ean8, ean 8]
@@ -119,6 +146,8 @@
     category: fact
     question: Combien de caractères au maximum peut contenir le libellé d'un article ?
     sources: [articles/creer-un-article.md]
+    sections:
+      - "Créer un article > Champs obligatoires"
     facts:
       - ["80"]
 
@@ -127,6 +156,9 @@
     category: fact
     question: Quel taux de TVA est appliqué par défaut à un nouvel article ?
     sources: [articles/creer-un-article.md, parametrage/tva-et-taxes.md]
+    sections:
+      - "Créer un article > Champs obligatoires"
+      - "TVA et taxes"
     facts:
       - ["20 %", "20%"]
 
@@ -135,6 +167,8 @@
     category: fact
     question: Quel est le format du code d'un article ?
     sources: [articles/creer-un-article.md]
+    sections:
+      - "Créer un article > Champs obligatoires"
     facts:
       - [art-]
       - [5 chiffres, cinq chiffres]
@@ -144,6 +178,8 @@
     category: fact
     question: Combien de niveaux de familles d'articles peut-on avoir ?
     sources: [articles/familles-et-unites.md]
+    sections:
+      - "Familles d'articles et unités > Familles"
     facts:
       - [deux niveaux, 2 niveaux]
 
@@ -152,6 +188,8 @@
     category: fact
     question: Quel est le délai de paiement par défaut des factures clients ?
     sources: [facturation/facture-client.md]
+    sections:
+      - "Factures clients > Échéance"
     facts:
       - [30 jours fin de mois]
 
@@ -160,6 +198,8 @@
     category: fact
     question: Quel délai de paiement maximum peut-on accorder à un client ?
     sources: [facturation/facture-client.md]
+    sections:
+      - "Factures clients > Échéance"
     facts:
       - [60 jours]
 
@@ -168,6 +208,8 @@
     category: fact
     question: Quels sont les modes de génération des factures clients ?
     sources: [facturation/facture-client.md]
+    sections:
+      - "Factures clients > Génération"
     facts:
       - [a la livraison, par bl, par bon de livraison]
       - [mensuel]
@@ -177,6 +219,9 @@
     category: fact
     question: Quel rôle faut-il pour créer un avoir ?
     sources: [facturation/avoir.md, parametrage/utilisateurs-et-roles.md]
+    sections:
+      - "Créer un avoir"
+      - "Utilisateurs et rôles > Rôles disponibles"
     facts:
       - [comptable]
 
@@ -185,6 +230,8 @@
     category: fact
     question: Comment remettre en stock la marchandise retournée lors d'un avoir ?
     sources: [facturation/avoir.md]
+    sections:
+      - "Créer un avoir > Retour de marchandise"
     facts:
       - [reintegrer en stock]
 
@@ -193,6 +240,8 @@
     category: fact
     question: Que se passe-t-il au niveau 3 de relance d'un impayé ?
     sources: [facturation/relances.md]
+    sections:
+      - "Relances des impayés"
     facts:
       - [mise en demeure]
       - [blocage, bloque, bloquee]
@@ -202,6 +251,8 @@
     category: fact
     question: Quel est le montant de l'indemnité forfaitaire de recouvrement ?
     sources: [facturation/relances.md]
+    sections:
+      - "Relances des impayés"
     facts:
       - ["40"]
 
@@ -210,6 +261,8 @@
     category: fact
     question: Quels taux de TVA sont disponibles dans Gestix ?
     sources: [parametrage/tva-et-taxes.md]
+    sections:
+      - "TVA et taxes"
     facts:
       - ["20 %", "20%"]
       - ["10 %", "10%"]
@@ -221,6 +274,8 @@
     category: fact
     question: Que se passe-t-il après plusieurs échecs de connexion ?
     sources: [parametrage/utilisateurs-et-roles.md]
+    sections:
+      - "Utilisateurs et rôles > Sécurité"
     facts:
       - [5 echecs, cinq echecs]
       - [15 minutes]
@@ -230,6 +285,8 @@
     category: fact
     question: Faut-il supprimer le compte d'un utilisateur qui quitte l'entreprise ?
     sources: [parametrage/utilisateurs-et-roles.md]
+    sections:
+      - "Utilisateurs et rôles > Sécurité"
     facts:
       - [desactive]
 
@@ -238,6 +295,8 @@
     category: fact
     question: Quel est l'entrepôt par défaut des nouvelles commandes ?
     sources: [stocks/entrepots-et-emplacements.md]
+    sections:
+      - "Entrepôts et emplacements"
     facts:
       - [orl, orly]
 
@@ -246,6 +305,8 @@
     category: fact
     question: Quels ajustements de stock nécessitent une validation, et par qui ?
     sources: [stocks/mouvements-de-stock.md]
+    sections:
+      - "Mouvements de stock > Stock physique et stock disponible"
     facts:
       - ["500"]
       - [responsable logistique]
@@ -255,6 +316,8 @@
     category: fact
     question: Au bout de combien de jours un transfert en transit apparaît-il en alerte ?
     sources: [stocks/transferts.md]
+    sections:
+      - "Transferts entre emplacements et entrepôts > Transfert inter-entrepôts"
     facts:
       - [7 jours, sept jours]
 
@@ -263,6 +326,8 @@
     category: fact
     question: Combien de temps un devis est-il valable par défaut ?
     sources: [ventes/devis.md]
+    sections:
+      - "Devis clients > Validité"
     facts:
       - [30 jours, trente jours]
 
@@ -271,6 +336,8 @@
     category: fact
     question: Jusqu'à quelle remise un commercial peut-il accorder sans validation ?
     sources: [ventes/devis.md]
+    sections:
+      - "Devis clients > Remises"
     facts:
       - ["15 %", "15%"]
 
@@ -279,6 +346,8 @@
     category: fact
     question: Quelle quantité Gestix suggère-t-il si aucun stock maximum n'est défini ?
     sources: [stocks/reapprovisionnement.md]
+    sections:
+      - "Réapprovisionnement et stock minimum > Calcul de la quantité suggérée"
     facts:
       - [double]
 
@@ -289,6 +358,9 @@
     category: multi
     question: Pourquoi le stock disponible d'un article est-il inférieur à son stock physique ?
     sources: [faq.md, stocks/mouvements-de-stock.md, ventes/commande-client.md, achats/reception.md]
+    sections:
+      - "Questions fréquentes"
+      - "Mouvements de stock > Stock physique et stock disponible"
     facts:
       - [reserv]
 
@@ -297,6 +369,9 @@
     category: multi
     question: Pourquoi je n'arrive pas à saisir un mouvement sur un emplacement ?
     sources: [faq.md, stocks/inventaire.md]
+    sections:
+      - "Questions fréquentes"
+      - "Réaliser et clôturer un inventaire > Déroulement"
     facts:
       - [inventaire]
       - [gel]
@@ -306,6 +381,10 @@
     category: multi
     question: Une commande client est bloquée, quelles peuvent en être les causes ?
     sources: [faq.md, ventes/commande-client.md, facturation/relances.md]
+    sections:
+      - "Questions fréquentes"
+      - "Commandes clients > Contrôle de l'encours"
+      - "Relances des impayés"
     facts:
       - [encours]
       - [relance, niveau 3]
@@ -315,6 +394,9 @@
     category: multi
     question: Après une réception, comment ranger la marchandise à son emplacement définitif ?
     sources: [achats/reception.md, stocks/transferts.md, stocks/entrepots-et-emplacements.md]
+    sections:
+      - "Réceptionner une commande fournisseur > Étapes"
+      - "Transferts entre emplacements et entrepôts > Transfert interne"
     facts:
       - [transfert interne]
 
@@ -323,6 +405,10 @@
     category: multi
     question: Comment corriger une erreur sur une facture déjà validée ?
     sources: [facturation/facture-client.md, facturation/avoir.md, faq.md]
+    sections:
+      - "Factures clients > Modification"
+      - "Questions fréquentes"
+      - "Créer un avoir"
     facts:
       - [avoir]
 
@@ -331,6 +417,8 @@
     category: multi
     question: Comment supprimer un emplacement qui contient encore de la marchandise ?
     sources: [stocks/entrepots-et-emplacements.md, stocks/transferts.md]
+    sections:
+      - "Entrepôts et emplacements > Emplacements"
     facts:
       - [vide]
       - [transfert]
@@ -340,6 +428,9 @@
     category: multi
     question: Quelles sont les étapes pour passer d'un devis accepté à une facture ?
     sources: [ventes/devis.md, ventes/commande-client.md, ventes/preparation-expedition.md, facturation/facture-client.md]
+    sections:
+      - "Factures clients > Génération"
+      - "Préparation et expédition > Expédition"
     facts:
       - [commande]
       - [bon de livraison, bl]
@@ -349,6 +440,9 @@
     category: multi
     question: Je ne peux pas ajouter un article sur un devis, que dois-je vérifier ?
     sources: [faq.md, articles/creer-un-article.md]
+    sections:
+      - "Questions fréquentes"
+      - "Créer un article > Statuts d'un article"
     facts:
       - [bloque a la vente]
       - [archive]
@@ -360,6 +454,8 @@
     category: paraphrase
     question: Je me suis trompé plusieurs fois de mot de passe et je ne peux plus me connecter, combien de temps dois-je attendre ?
     sources: [parametrage/utilisateurs-et-roles.md]
+    sections:
+      - "Utilisateurs et rôles > Sécurité"
     facts:
       - [15 minutes]
 
@@ -368,6 +464,8 @@
     category: paraphrase
     question: Le fournisseur nous a livré bien plus que ce qu'on avait commandé, est-ce que je peux tout accepter ?
     sources: [achats/reception.md]
+    sections:
+      - "Réceptionner une commande fournisseur > Écarts et litiges"
     facts:
       - ["5 %", "5%"]
       - [responsable logistique]
@@ -377,6 +475,8 @@
     category: paraphrase
     question: Un client ne nous paie pas depuis un mois et demi, que fait le logiciel ?
     sources: [facturation/relances.md]
+    sections:
+      - "Relances des impayés"
     facts:
       - [mise en demeure, niveau 3]
 
@@ -385,6 +485,8 @@
     category: paraphrase
     question: Je veux faire une ristourne de 20 % à un client sur une ligne, je peux le faire tout seul ?
     sources: [ventes/devis.md]
+    sections:
+      - "Devis clients > Remises"
     facts:
       - [administrateur]
 
@@ -393,6 +495,8 @@
     category: paraphrase
     question: J'ai saisi un mauvais mouvement de stock, comment je l'efface ?
     sources: [stocks/mouvements-de-stock.md]
+    sections:
+      - "Mouvements de stock > Stock physique et stock disponible"
     facts:
       - [mouvement inverse]
 
@@ -401,6 +505,8 @@
     category: paraphrase
     question: Combien de temps une proposition commerciale reste-t-elle valable ?
     sources: [ventes/devis.md]
+    sections:
+      - "Devis clients > Validité"
     facts:
       - [30 jours, trente jours]
 
@@ -411,6 +517,7 @@
     category: refusal
     question: Comment configurer la paie des salariés dans Gestix ?
     sources: []
+    sections: []
     facts: []
 
 - description: refus-shopify
@@ -418,6 +525,7 @@
     category: refusal
     question: Comment connecter Gestix à une boutique Shopify ?
     sources: []
+    sections: []
     facts: []
 
 - description: refus-meteo
@@ -425,6 +533,7 @@
     category: refusal
     question: Quel temps fera-t-il demain à Lyon ?
     sources: []
+    sections: []
     facts: []
 
 - description: refus-conges
@@ -432,6 +541,7 @@
     category: refusal
     question: Comment gérer les congés payés des magasiniers ?
     sources: []
+    sections: []
     facts: []
 
 - description: refus-prix-abonnement
@@ -439,6 +549,7 @@
     category: refusal
     question: Combien coûte l'abonnement à Gestix ?
     sources: []
+    sections: []
     facts: []
 
 - description: refus-amortissement
@@ -446,6 +557,7 @@
     category: refusal
     question: Comment calculer l'amortissement d'un chariot élévateur ?
     sources: []
+    sections: []
     facts: []
 
 - description: refus-lots-peremption
@@ -453,6 +565,7 @@
     category: refusal
     question: Comment suivre les numéros de lot et les dates de péremption des articles ?
     sources: []
+    sections: []
     facts: []
 
 - description: refus-devise-etrangere
@@ -460,4 +573,5 @@
     category: refusal
     question: Peut-on facturer un client en dollars américains ?
     sources: []
+    sections: []
     facts: []

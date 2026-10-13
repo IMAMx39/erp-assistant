@@ -20,4 +20,32 @@ class ChunkRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Chunk::class);
     }
+
+    /**
+     * Charge les chunks et leur document en une requête, dans l'ordre des identifiants donnés.
+     *
+     * @param list<int> $ids
+     *
+     * @return list<Chunk>
+     */
+    public function findWithDocuments(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        /** @var list<Chunk> $chunks */
+        $chunks = $this->createQueryBuilder('c')
+            ->addSelect('d')
+            ->join('c.document', 'd')
+            ->where('c.id IN (:ids)')
+            ->setParameter('ids', $ids)
+            ->getQuery()
+            ->getResult();
+
+        $position = array_flip($ids);
+        usort($chunks, static fn (Chunk $a, Chunk $b): int => $position[$a->getId()] <=> $position[$b->getId()]);
+
+        return $chunks;
+    }
 }

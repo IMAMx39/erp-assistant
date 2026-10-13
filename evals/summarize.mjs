@@ -61,6 +61,7 @@ lines.push("# Résultats d'évaluation");
 lines.push("");
 lines.push(`- Date : ${data.results.timestamp ?? new Date().toISOString()}`);
 lines.push(`- Modèle : ${models.join(", ") || "inconnu"}`);
+lines.push(`- Recherche : mode \`${rows[0]?.vars.mode ?? "inconnu"}\``);
 lines.push(`- Questions : ${cases.length} (${answerable.length} couvertes par le corpus, ${outOfScope.length} hors corpus)`);
 if (cases.length !== ok.length) lines.push(`- Erreurs d'appel : ${cases.length - ok.length}`);
 lines.push("");

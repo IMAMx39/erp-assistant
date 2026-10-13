@@ -9,7 +9,10 @@ export type Source = {
   module: string;
   heading: string;
   content: string;
-  distance: number;
+  /** Distance cosinus à la question ; null si l'extrait ne vient pas de la recherche vectorielle. */
+  distance: number | null;
+  /** Pertinence selon le mode de recherche (plus haut = mieux). */
+  score: number;
 };
 
 export type Citation = {

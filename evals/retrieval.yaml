@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+# Mesure de la recherche seule, par section, sans génération : make eval-retrieval MODE=hybrid
+description: Recherche documentaire Gestix (par section)
+
+prompts:
+  - "{{question}}"
+
+providers:
+  - id: http
+    label: gestix-search
+    config:
+      url: http://nginx/api/search
+      method: GET
+      queryParams:
+        q: "{{question}}"
+        limit: "{{limit}}"
+        mode: "{{mode}}"
+      transformResponse: json
+
+defaultTest:
+  vars:
+    limit: "5"
+  assert:
+    - type: javascript
+      value: file://assertions.cjs:sectionRank
+      metric: section
+
+tests: file://dataset.yaml

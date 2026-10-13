@@ -16,6 +16,8 @@ parameters:
     env(MISTRAL_API_KEY): ''
     env(MISTRAL_MODEL): 'mistral-small-latest'
     env(OLLAMA_CHAT_MODEL): 'llama3.2:3b'
+    env(RETRIEVAL_MODE): 'vector'
+    env(RERANK_MODEL): 'qwen/qwen3.8-27b'
 
 services:
     # default configuration for services in *this* file
@@ -70,3 +72,10 @@ services:
             $model: '%env(OLLAMA_CHAT_MODEL)%'
             $requestUsage: true
         tags: [{ name: App\Chat\Generator\AnswerGeneratorInterface, key: ollama }]
+
+    # Reclassement des extraits par LLM (mode hybrid_rerank), via Groq.
+    App\Retrieval\LlmReranker:
+        arguments:
+            $url: 'https://api.groq.com/openai/v1/chat/completions'
+            $model: '%env(RERANK_MODEL)%'
+            $apiKey: '%env(GROQ_API_KEY)%'

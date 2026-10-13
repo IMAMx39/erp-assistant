@@ -17,6 +17,8 @@ providers:
         Accept: application/json
       body:
         question: "{{question}}"
+        # Mode de recherche : passé par make eval (--var mode=…).
+        mode: "{{mode}}"
       # La réponse JSON entière est passée aux assertions.
       transformResponse: json
 

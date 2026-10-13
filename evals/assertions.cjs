@@ -71,4 +71,19 @@ function citations(output, { vars }) {
   };
 }
 
-module.exports = { retrieval, refusal, facts, citations, normalize };
+/**
+ * Recherche par section (sortie de GET /api/search) : rang de la première section attendue parmi
+ * les extraits. Score = 1 / rang (réciproque du rang, moyenné en MRR), 0 si absente.
+ */
+function sectionRank(output, { vars }) {
+  if (vars.category === "refusal") return notApplicable;
+  const headings = response(output).results.map((r) => r.heading);
+  const index = headings.findIndex((heading) => vars.sections.includes(heading));
+  return {
+    pass: index !== -1,
+    score: index === -1 ? 0 : 1 / (index + 1),
+    reason: index === -1 ? `Sections retrouvées : ${headings.join(" | ")}` : `Section attendue au rang ${index + 1}`,
+  };
+}
+
+module.exports = { retrieval, refusal, facts, citations, sectionRank, normalize };

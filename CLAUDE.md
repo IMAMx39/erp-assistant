@@ -37,7 +37,8 @@ docker compose exec php php bin/console <commande>
 docker compose restart worker             # OBLIGATOIRE après toute modification de code traité par Messenger
 docker compose logs -f worker
 docker compose exec php php bin/console app:corpus:ingest [--force]
-make eval                                 # évaluation promptfoo (≈ 5 min 30 avec Groq), synthèse dans evals/results/latest.md
+make eval MODE=hybrid_rerank EVAL_DELAY=18000   # évaluation complète promptfoo, synthèse dans evals/results/latest.md
+make eval-retrieval MODE=hybrid [LIMIT=10]      # recherche seule, par section, sans LLM (sauf hybrid_rerank : RETRIEVAL_DELAY=12000)
 ```
 
 Toujours préfixer par `php` : `php bin/console`, jamais `bin/console` seul.
@@ -51,7 +52,7 @@ backend/src/
 ├── Doctrine/Type/   # type DBAL « vector » (correctif temporaire du bundle)
 ├── Embedding/       # EmbedderInterface, OllamaEmbedder
 ├── Ingestion/       # Parser/, Chunker/, Dto/, Message/, MessageHandler/, Command/
-├── Retrieval/       # VectorRetriever, GET /api/search ; à venir : hybride (FULLTEXT + vecteurs, RRF), reranking
+├── Retrieval/       # DocumentRetriever (mode vector | hybrid | hybrid_rerank), VectorRetriever, FulltextRetriever, LlmReranker, GET /api/search
 ├── Chat/            # ChatService (RAG), PromptBuilder, Generator/ (Anthropic, Chat Completions), POST /api/chat (JSON) et /api/chat/stream (SSE)
 ├── Agent/Tool/      # outils de consultation de l'ERP fictif
 ├── Erp/Entity/      # ERP fictif : Article, Entrepot, Emplacement, Stock, Commande…
@@ -116,3 +117,5 @@ Hors périmètre pour l'instant : multi-tenant.
 - Les générateurs Chat Completions sont déclarés avec `autoconfigure: false` : sinon l'autoconfiguration leur ajoute une seconde étiquette sans `key` et `LLM_PROVIDER` ne les trouve plus.
 - Offre gratuite de Groq : 8 000 tokens/min et 1 000 requêtes/jour. `make eval` envoie une question toutes les 6 s (`EVAL_DELAY`) ; l'option `delay` du fichier promptfoo est ignorée, d'où son passage en ligne de commande.
 - promptfoo démultiplie les variables de type liste en plusieurs tests : `PROMPTFOO_DISABLE_VAR_EXPANSION=1` dans le service `evals`.
+- La liste de mots vides d'InnoDB est anglaise : `FulltextRetriever` retire lui-même les mots vides français de la question (sans « avoir », terme métier).
+- Sur ce corpus, la recherche plein texte seule n'apporte rien (pas de racinisation) : son intérêt est d'élargir le vivier de 10 candidats soumis au reclassement. Le reclassement par LLM ajoute ~1 500 tokens Groq par question.
