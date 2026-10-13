@@ -89,7 +89,7 @@ Autres dossiers : `corpus/` (documentation Markdown), `evals/` (promptfoo), `fro
 - [x] **J1** — Stack Docker, dépôt Git, corpus Gestix.
 - [x] **J2** — Ingestion : entités `Document`/`Chunk`, parser front matter, chunker par `##`, commande `app:corpus:ingest`, handler Messenger idempotent (hash SHA-256).
 - [x] **J3** — Embeddings via Ollama, stockage avec le bundle MariaDB vector, endpoint de recherche testable (`GET /api/search?q=…&limit=5`).
-- [ ] **J4** — Génération (Symfony AI ou client HTTP Anthropic), citation des sources, refus si l'information est absente, streaming (en-tête `X-Accel-Buffering: no` pour nginx).
+- [x] **J4** — Génération (Claude, ou Groq/Mistral/Ollama via `LLM_PROVIDER`), citation des sources, refus si l'information est absente, streaming SSE (en-tête `X-Accel-Buffering: no` pour nginx). Validé avec Groq (`qwen/qwen3.8-27b`) ; Claude non testé en réel faute de crédit.
 - [ ] **J5** — Interface de chat Next.js avec affichage des sources. → **v1 présentable**.
 - [ ] **J6** — Jeu d'évaluation (~50 questions/réponses attendues), promptfoo, mesure de référence. **Prioritaire : ne jamais sacrifier.**
 - [ ] **J7** — Recherche hybride (FULLTEXT MariaDB + vecteurs, fusion RRF) et reranking, puis nouvelle mesure.
