@@ -5,15 +5,23 @@ type Props = {
   citations: Citation[];
   activeSource: number | null;
   onSelectSource: (source: number) => void;
+  /** Réponse terminée sans s'appuyer sur la documentation (refus). */
+  unanswered?: boolean;
 };
 
-export function SourcesPanel({ sources, citations, activeSource, onSelectSource }: Props) {
+export function SourcesPanel({ sources, citations, activeSource, onSelectSource, unanswered = false }: Props) {
   if (sources.length === 0) {
     return <p className="text-sm text-zinc-500 dark:text-zinc-400">Les extraits consultés apparaîtront ici.</p>;
   }
 
   return (
-    <ol className="space-y-2">
+    <>
+      {unanswered && (
+        <p className="mb-3 text-sm text-zinc-500 dark:text-zinc-400">
+          Aucun de ces extraits ne répond à la question : ce sont les plus proches trouvés dans la documentation.
+        </p>
+      )}
+      <ol className="space-y-2">
       {sources.map((source, i) => {
         const number = i + 1;
         const cited = citations.some((c) => c.source === number);
@@ -67,7 +75,7 @@ export function SourcesPanel({ sources, citations, activeSource, onSelectSource 
                       </blockquote>
                     ))
                   ) : (
-                    <p className="whitespace-pre-wrap text-zinc-600 dark:text-zinc-400">{source.content}</p>
+                    <p className="whitespace-pre-wrap text-zinc-600 dark:text-zinc-400">{plainText(source.content)}</p>
                   )}
                 </div>
               )}
@@ -75,6 +83,15 @@ export function SourcesPanel({ sources, citations, activeSource, onSelectSource 
           </li>
         );
       })}
-    </ol>
+      </ol>
+    </>
   );
+}
+
+/** Retire la syntaxe Markdown des extraits : gras, code, liens internes au corpus. */
+function plainText(markdown: string): string {
+  return markdown
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/`([^`]+)`/g, "$1");
 }

@@ -76,6 +76,24 @@ services:
       NEXT_PUBLIC_API_URL: http://localhost:8080
       WATCHPACK_POLLING: "true"
 
+  # Évaluation du RAG (promptfoo) : make eval. Hors démarrage normal grâce au profil.
+  evals:
+    image: node:22-alpine
+    profiles: ["evals"]
+    working_dir: /evals
+    entrypoint: ["npx", "-y", "promptfoo@0.123.1"]
+    volumes:
+      - ./evals:/evals
+      - evals_npm_cache:/root/.npm
+    environment:
+      PROMPTFOO_DISABLE_TELEMETRY: "1"
+      PROMPTFOO_DISABLE_UPDATE: "1"
+      PROMPTFOO_CONFIG_DIR: /evals/.promptfoo
+      # Les listes du jeu de données (sources, faits) ne doivent pas être démultipliées en tests.
+      PROMPTFOO_DISABLE_VAR_EXPANSION: "1"
+    depends_on:
+      - nginx
+
   # Uniquement sous Linux / serveur. Sur Mac, lancer Ollama en natif (GPU Metal).
   ollama:
     image: ollama/ollama
@@ -87,5 +105,6 @@ services:
 
 volumes:
   db_data:
+  evals_npm_cache:
   frontend_node_modules:
   ollama_data:

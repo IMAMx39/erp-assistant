@@ -1,0 +1,4 @@
+# Résultats bruts d'exécution ; seule la mesure de référence est versionnée.
+/results/*
+!/results/baseline.md
+/.promptfoo/

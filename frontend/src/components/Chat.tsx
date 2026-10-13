@@ -145,6 +145,7 @@ export function Chat() {
                             citations={turn.citations}
                             activeSource={turn.id === current?.id ? activeSource : null}
                             onSelectSource={(source) => selectSource(turn.id, source)}
+                            unanswered={turn.done?.answered === false}
                           />
                         </div>
                       </details>
@@ -176,6 +177,7 @@ export function Chat() {
             citations={current?.citations ?? []}
             activeSource={activeSource}
             onSelectSource={(source) => current && selectSource(current.id, source)}
+            unanswered={current?.done?.answered === false}
           />
         </aside>
       </div>

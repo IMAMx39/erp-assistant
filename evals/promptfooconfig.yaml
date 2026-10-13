@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+# Évaluation de l'assistant documentaire Gestix : make eval
+description: Assistant documentaire Gestix (RAG)
+
+prompts:
+  - "{{question}}"
+
+providers:
+  - id: http
+    label: gestix-api
+    config:
+      # Depuis le conteneur evals, l'API est joignable par le service nginx.
+      url: http://nginx/api/chat
+      method: POST
+      headers:
+        Content-Type: application/json
+        Accept: application/json
+      body:
+        question: "{{question}}"
+      # La réponse JSON entière est passée aux assertions.
+      transformResponse: json
+
+defaultTest:
+  assert:
+    - type: javascript
+      value: file://assertions.cjs:retrieval
+      metric: recherche
+    - type: javascript
+      value: file://assertions.cjs:refusal
+      metric: refus
+    - type: javascript
+      value: file://assertions.cjs:facts
+      metric: exactitude
+    - type: javascript
+      value: file://assertions.cjs:citations
+      metric: citations
+
+tests: file://dataset.yaml
+
+# Rythme des appels : passé en ligne de commande par make eval (-j 1 --delay 6000),
+# l'option delay de ce fichier n'étant pas prise en compte par promptfoo 0.123.

@@ -37,6 +37,7 @@ docker compose exec php php bin/console <commande>
 docker compose restart worker             # OBLIGATOIRE après toute modification de code traité par Messenger
 docker compose logs -f worker
 docker compose exec php php bin/console app:corpus:ingest [--force]
+make eval                                 # évaluation promptfoo (≈ 5 min 30 avec Groq), synthèse dans evals/results/latest.md
 ```
 
 Toujours préfixer par `php` : `php bin/console`, jamais `bin/console` seul.
@@ -58,6 +59,8 @@ backend/src/
 ```
 
 Autres dossiers : `corpus/` (documentation Markdown), `evals/` (promptfoo), `frontend/`, `docker/`.
+
+`evals/` : `dataset.yaml` (questions, sources acceptées, faits attendus), `assertions.cjs` (contrôles sans LLM : recherche, refus, exactitude, citations), `summarize.mjs` (taux par catégorie), `promptfooconfig.yaml`. promptfoo tourne dans le service compose `evals` (profil `evals`, version figée). Seul `results/baseline.md` est versionné.
 
 ## Corpus
 
@@ -90,8 +93,8 @@ Autres dossiers : `corpus/` (documentation Markdown), `evals/` (promptfoo), `fro
 - [x] **J2** — Ingestion : entités `Document`/`Chunk`, parser front matter, chunker par `##`, commande `app:corpus:ingest`, handler Messenger idempotent (hash SHA-256).
 - [x] **J3** — Embeddings via Ollama, stockage avec le bundle MariaDB vector, endpoint de recherche testable (`GET /api/search?q=…&limit=5`).
 - [x] **J4** — Génération (Claude, ou Groq/Mistral/Ollama via `LLM_PROVIDER`), citation des sources, refus si l'information est absente, streaming SSE (en-tête `X-Accel-Buffering: no` pour nginx). Validé avec Groq (`qwen/qwen3.8-27b`) ; Claude non testé en réel faute de crédit.
-- [ ] **J5** — Interface de chat Next.js avec affichage des sources. → **v1 présentable**.
-- [ ] **J6** — Jeu d'évaluation (~50 questions/réponses attendues), promptfoo, mesure de référence. **Prioritaire : ne jamais sacrifier.**
+- [x] **J5** — Interface de chat Next.js avec affichage des sources. → **v1 présentable**.
+- [x] **J6** — Jeu d'évaluation (54 questions), promptfoo, mesure de référence (`evals/results/baseline.md`) : 94 % de réussite complète, 100 % de refus justes, 3 échecs dus à la recherche. **Prioritaire : ne jamais sacrifier.**
 - [ ] **J7** — Recherche hybride (FULLTEXT MariaDB + vecteurs, fusion RRF) et reranking, puis nouvelle mesure.
 - [ ] **J8** — ERP fictif (entités + fixtures cohérentes avec le corpus), outils de l'agent, tool calling.
 - [ ] **J9** — Serveur MCP (testé dans Claude Desktop), traces Langfuse (compose séparé). Sacrifiable si retard.
@@ -106,8 +109,10 @@ Hors périmètre pour l'instant : multi-tenant.
 - Le worker ne recharge pas le code : `docker compose restart worker`.
 - `app:corpus:ingest` supprime en base les documents absents du corpus ; un garde-fou bloque l'opération si aucun fichier n'est trouvé.
 - Doctrine insère avant de supprimer lors d'un flush : ne pas ajouter de contrainte unique sur `(document_id, position)` dans `chunk`.
-- Le type `vector` du bundle v1.0.1 écrit en binaire, ce que MariaDB rejette via PDO (« Incorrect vector value ») : `App\Doctrine\Type\VectorType` le remplace (écriture JSON + `VEC_FromText`). À retirer quand le bundle sera corrigé.
+- Le type `vector` du bundle v1.0.1 a deux bugs, corrigés par `App\Doctrine\Type\VectorType` (à retirer quand le bundle sera corrigé) : l'écriture binaire est rejetée par MariaDB via PDO (« Incorrect vector value », on écrit en JSON + `VEC_FromText`) ; la lecture prend pour du JSON tout vecteur binaire dont le premier octet vaut `[` (« Syntax error », trouvé par l'évaluation du J6).
 - Le `VECTOR INDEX` s'ajoute à la main dans la migration ; il est déclaré comme index simple sur l'entité (c'est ainsi que DBAL le relit) et `mapping_types: vector` est requis dans `doctrine.yaml`.
 - L'embedding est `NOT NULL` : il est calculé dans le handler avant le flush. Si Ollama ne répond pas, le message part dans la file `failed` après 3 essais (`php bin/console messenger:failed:retry`).
 - Après la recréation du conteneur `php`, nginx garde l'ancienne IP et renvoie 502 : `docker compose restart nginx`.
 - Les générateurs Chat Completions sont déclarés avec `autoconfigure: false` : sinon l'autoconfiguration leur ajoute une seconde étiquette sans `key` et `LLM_PROVIDER` ne les trouve plus.
+- Offre gratuite de Groq : 8 000 tokens/min et 1 000 requêtes/jour. `make eval` envoie une question toutes les 6 s (`EVAL_DELAY`) ; l'option `delay` du fichier promptfoo est ignorée, d'où son passage en ligne de commande.
+- promptfoo démultiplie les variables de type liste en plusieurs tests : `PROMPTFOO_DISABLE_VAR_EXPANSION=1` dans le service `evals`.
