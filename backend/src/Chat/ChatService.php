@@ -45,7 +45,7 @@ final class ChatService
     {
         $generator = $this->generator();
         $mode ??= $this->retriever->defaultMode();
-        $this->tracer->startTrace('question', $question, ['fournisseur' => $this->provider, 'recherche' => $mode->value]);
+        $this->tracer->startTrace('question', $question, ['fournisseur' => $this->provider, 'recherche' => $mode->value], type: 'agent');
 
         $sources = $this->retriever->search($question, self::RETRIEVAL_LIMIT, $mode);
         yield new ChatEvent(ChatEvent::SOURCES, $sources);

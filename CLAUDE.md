@@ -13,7 +13,7 @@ Le projet doit rester présentable à un recruteur : code propre, commits régul
 
 ## Stack et environnement
 
-- Mac avec **Docker Desktop** (binaire `/Volumes/kawimdev/Docker.app/Contents/Resources/bin/docker`, VM de 3,9 Go). Projet monté depuis `/Volumes/kawimdev/Project/erp-assistant`.
+- Mac avec **OrbStack** comme moteur Docker (contexte `orbstack`, VM de 3,9 Go) ; le binaire `docker` utilisé est `/Volumes/kawimdev/Docker.app/Contents/Resources/bin/docker`. OrbStack doit être démarré avant `make up`. Projet monté depuis `/Volumes/kawimdev/Project/erp-assistant`.
 - Docker Compose : `php` (PHP 8.2-FPM), `worker` (Messenger), `nginx`, `mariadb` (11.8, support vectoriel natif), `frontend` (Node 22, Next.js).
 - **PHP 8.2** : toute dépendance doit être compatible. Ne jamais installer un paquet qui exige PHP 8.4 (ex. composants Symfony 8).
 - Backend : **Symfony 7.4**, Doctrine ORM (attributs), Messenger (transport Doctrine).
@@ -59,7 +59,7 @@ backend/src/
 ├── Agent/           # ToolRegistry ; Tool/ : 7 outils en lecture seule (get_article, search_articles, get_stock, get_customer, get_customer_order, get_purchase_order, restock_suggestions)
 ├── Erp/             # ERP fictif (tables erp_*) : Entity/, Enum/ (statuts avec libellés du corpus), Service/ (stock disponible, encours, réapprovisionnement)
 ├── DataFixtures/    # ErpFixtures : données écrites à la main, reproductibles (make fixtures)
-├── Observability/   # LangfuseTracer (inactif sans clés, envoi après la réponse), FlushTracesListener
+├── Observability/   # LangfuseTracer (OpenTelemetry, inactif sans clés, envoi après la réponse), FlushTracesListener
 └── Mcp/             # serveur MCP (symfony/mcp-bundle) : ErpToolLoader expose les outils de l'agent + search_documentation, en stdio
 ```
 
@@ -102,9 +102,9 @@ Autres dossiers : `corpus/` (documentation Markdown), `evals/` (promptfoo), `fro
 - [x] **J6** — Jeu d'évaluation (54 questions), promptfoo, mesure de référence (`evals/results/baseline.md`) : 94 % de réussite complète, 100 % de refus justes, 3 échecs dus à la recherche. **Prioritaire : ne jamais sacrifier.**
 - [x] **J7** — Recherche hybride (FULLTEXT MariaDB + vecteurs, fusion RRF) et reranking, puis nouvelle mesure (`evals/results/j7-recherche.md`) : section trouvée 93 % → 100 %, MRR 0,82 → 0,99 ; mode par défaut `hybrid_rerank`. **Reste à faire** : la mesure complète des réponses (`make eval MODE=hybrid_rerank EVAL_DELAY=18000`), interrompue par le quota Groq après 26/54 questions, toutes réussies.
 - [x] **J8** — ERP fictif (entités + fixtures cohérentes avec le corpus), outils de l'agent, tool calling (`evals/results/j8-agent.md`) : 15 questions sur les données, bon outil et valeurs exactes 14/14 après corrections (gpt-oss-120b). Agent Claude vérifié hors ligne seulement.
-- [ ] **J9** — Serveur MCP (testé dans Claude Desktop), traces Langfuse (compose séparé). Sacrifiable si retard.
+- [x] **J9** — Serveur MCP (testé dans Claude Desktop), traces Langfuse (compose séparé). Sacrifiable si retard.
   - [x] Serveur MCP : 8 outils en lecture seule (7 de l'agent + `search_documentation`), stdio, **testé dans Claude Desktop**.
-  - [x] Traces Langfuse (Langfuse Cloud, API d'ingestion, sans dépendance) : une trace par question (recherche et sous-étapes, appels LLM avec tokens et temps jusqu'au premier mot, outils) et une par appel MCP. Vérifié contre un faux point d'ingestion ; **reste à brancher les clés**.
+  - [x] Traces Langfuse Cloud en **OpenTelemetry** (OTLP/HTTP JSON, sans dépendance) : une trace par question (recherche et sous-étapes, appels LLM avec modèle, tokens et temps jusqu'au premier mot, outils) et une par appel MCP. **Vérifié sur le vrai Langfuse.**
 - [ ] **J10** — CI GitHub Actions avec évaluation automatique, déploiement sur le serveur AWS, README (schéma d'architecture + résultats chiffrés).
 
 Hors périmètre pour l'instant : multi-tenant.
@@ -132,4 +132,5 @@ Hors périmètre pour l'instant : multi-tenant.
 - En mode non-debug (`new Kernel('dev', false)`), Symfony réutilise un conteneur compilé ancien : utiliser le mode debug dans les scripts de test.
 - `docker compose run evals` redémarre ses dépendances (nginx, php) si leur configuration diffère : les cibles d'évaluation utilisent `--no-deps` (la pile doit déjà tourner, `make up`).
 - Serveur MCP : la sortie standard doit rester du JSON-RPC pur (les logs Symfony vont sur la sortie d'erreur). Lancer `mcp:server` sans `--no-debug` (sinon conteneur compilé périmé). Claude Desktop n'hérite pas du PATH du terminal : chemin absolu de `docker` dans sa configuration.
-- Langfuse : les traces partent en un lot à `kernel.terminate` (après la réponse) ; le serveur MCP, processus permanent, envoie une trace par appel. Une panne de Langfuse est journalisée, jamais bloquante.
+- Langfuse : les traces partent en un lot OTLP à `kernel.terminate` (après la réponse) ; le serveur MCP, processus permanent, envoie une trace par appel. Une panne de Langfuse est journalisée, jamais bloquante.
+- Langfuse Cloud : l'ancienne API d'ingestion (`/api/public/ingestion`) est coupée le 16/11/2026 et l'ancienne API de lecture est fermée aux organisations récentes. Envoi via `/api/public/otel/v1/traces` (en-tête `x-langfuse-ingestion-version: 4`), relecture via `/api/public/v2/observations` avec `fields=core,basic,usage,model,time,io,metadata` (sinon modèle et tokens absents). Les traces apparaissent avec quelques secondes de délai.

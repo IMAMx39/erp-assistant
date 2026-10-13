@@ -11,18 +11,23 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
- * Traces Langfuse (API d'ingestion) : une trace par question, avec ses étapes (recherche, appels
- * au LLM, outils) imbriquées.
+ * Traces Langfuse au format OpenTelemetry (OTLP/HTTP en JSON, sans dépendance) : une trace par
+ * question, faite d'une étape racine et de ses étapes imbriquées (recherche, appels au LLM, outils).
  *
- * Inactif sans clés (aucun appel réseau). Les événements sont gardés en mémoire et envoyés en un
- * lot par flush(), appelé après l'envoi de la réponse : l'utilisateur n'attend jamais Langfuse, et
- * une panne de Langfuse ne fait jamais échouer une question (elle est seulement journalisée).
+ * Langfuse Cloud n'accepte plus que l'ingestion OpenTelemetry pour les traces (l'ancienne API
+ * d'ingestion est coupée le 16/11/2026). Les attributs `langfuse.*` suivent sa table de correspondance.
+ *
+ * Inactif sans clés (aucun appel réseau). Les étapes sont gardées en mémoire et envoyées en un lot
+ * par flush(), appelé après l'envoi de la réponse : l'utilisateur n'attend jamais Langfuse, et une
+ * panne de Langfuse ne fait jamais échouer une question (elle est seulement journalisée).
  */
 final class LangfuseTracer implements ResetInterface
 {
     private ?string $traceId = null;
-    /** @var list<array<string, mixed>> */
-    private array $events = [];
+    /** @var array{spanId: string, name: string, start: string, attributes: array<string, mixed>}|null étape racine, close à endTrace() */
+    private ?array $root = null;
+    /** @var list<array<string, mixed>> étapes terminées, au format OTLP */
+    private array $spans = [];
     /** @var list<string> identifiants des étapes en cours, pour l'imbrication */
     private array $parents = [];
 
@@ -48,40 +53,50 @@ final class LangfuseTracer implements ResetInterface
      *
      * @param array<string, mixed> $metadata
      * @param list<string>         $tags
+     * @param string               $type     type Langfuse de l'étape racine (agent, span…)
      */
-    public function startTrace(string $name, mixed $input, array $metadata = [], array $tags = []): void
+    public function startTrace(string $name, mixed $input, array $metadata = [], array $tags = [], string $type = 'span'): void
     {
         if (!$this->enabled() || $this->traceId !== null) {
             return;
         }
 
-        $this->traceId = self::uuid();
-        $this->record('trace-create', [
-            'id' => $this->traceId,
-            'name' => $name,
-            'input' => $input,
-            'metadata' => $metadata,
-            'tags' => $tags,
-            'timestamp' => self::now(),
-        ]);
+        $this->traceId = bin2hex(random_bytes(16));
+        $attributes = [
+            'langfuse.trace.name' => $name,
+            'langfuse.observation.type' => $type,
+            'langfuse.observation.input' => self::json($input),
+        ];
+        if ($tags !== []) {
+            $attributes['langfuse.trace.tags'] = $tags;
+        }
+        foreach ($metadata as $key => $value) {
+            $attributes['langfuse.trace.metadata.'.$key] = $value;
+        }
+
+        $this->root = ['spanId' => self::spanId(), 'name' => $name, 'start' => self::now(), 'attributes' => $attributes];
+        $this->parents = [$this->root['spanId']];
     }
 
     /**
-     * Complète la trace (même identifiant : Langfuse fusionne les champs).
+     * Ferme l'étape racine avec la sortie de la trace.
      *
      * @param array<string, mixed> $metadata
      */
     public function endTrace(mixed $output, array $metadata = []): void
     {
-        if ($this->traceId === null) {
+        if ($this->root === null) {
             return;
         }
 
-        $this->record('trace-create', array_filter([
-            'id' => $this->traceId,
-            'output' => $output,
-            'metadata' => $metadata === [] ? null : $metadata,
-        ], static fn (mixed $value): bool => $value !== null));
+        $attributes = $this->root['attributes'];
+        $attributes['langfuse.observation.output'] = self::json($output);
+        foreach ($metadata as $key => $value) {
+            $attributes['langfuse.trace.metadata.'.$key] = $value;
+        }
+
+        $this->spans[] = $this->otlpSpan($this->root['spanId'], null, $this->root['name'], $this->root['start'], self::now(), $attributes);
+        $this->root = null;
     }
 
     /**
@@ -89,34 +104,42 @@ final class LangfuseTracer implements ResetInterface
      *
      * @template T
      *
-     * @param callable(): T            $work
-     * @param ?callable(T): mixed      $describe transforme le résultat en sortie lisible dans Langfuse
-     * @param array<string, mixed>     $metadata
+     * @param callable(): T        $work
+     * @param ?callable(T): mixed  $describe transforme le résultat en sortie lisible dans Langfuse
+     * @param array<string, mixed> $metadata
+     * @param string               $type     type Langfuse : span, retriever, tool…
      *
      * @return T
      */
-    public function span(string $name, mixed $input, callable $work, ?callable $describe = null, array $metadata = []): mixed
+    public function span(string $name, mixed $input, callable $work, ?callable $describe = null, array $metadata = [], string $type = 'span'): mixed
     {
         if ($this->traceId === null) {
             return $work();
         }
 
-        $id = self::uuid();
-        $parent = $this->parents === [] ? null : $this->parents[\count($this->parents) - 1];
+        $id = self::spanId();
+        $parent = $this->currentParent();
         $start = self::now();
         $this->parents[] = $id;
+        $attributes = ['langfuse.observation.type' => $type, 'langfuse.observation.input' => self::json($input)];
+        foreach ($metadata as $key => $value) {
+            $attributes['langfuse.observation.metadata.'.$key] = $value;
+        }
 
         try {
             $result = $work();
         } catch (\Throwable $e) {
-            $this->recordSpan($id, $parent, $name, $input, null, $start, $metadata, 'ERROR', $e->getMessage());
+            $attributes['langfuse.observation.level'] = 'ERROR';
+            $attributes['langfuse.observation.status_message'] = $e->getMessage();
+            $this->spans[] = $this->otlpSpan($id, $parent, $name, $start, self::now(), $attributes, $e->getMessage());
 
             throw $e;
         } finally {
             array_pop($this->parents);
         }
 
-        $this->recordSpan($id, $parent, $name, $input, $describe === null ? $result : $describe($result), $start, $metadata);
+        $attributes['langfuse.observation.output'] = self::json($describe === null ? $result : $describe($result));
+        $this->spans[] = $this->otlpSpan($id, $parent, $name, $start, self::now(), $attributes);
 
         return $result;
     }
@@ -124,6 +147,8 @@ final class LangfuseTracer implements ResetInterface
     /**
      * Enregistre un appel à un LLM déjà terminé (les tours streamés ne se prêtent pas à span()).
      *
+     * @param string               $startTime           horodatage de LangfuseTracer::now()
+     * @param ?string              $completionStartTime horodatage du premier token reçu
      * @param array<string, mixed> $metadata
      */
     public function generation(
@@ -141,49 +166,61 @@ final class LangfuseTracer implements ResetInterface
             return;
         }
 
-        $this->record('generation-create', array_filter([
-            'id' => self::uuid(),
-            'traceId' => $this->traceId,
-            'parentObservationId' => $this->parents === [] ? null : $this->parents[\count($this->parents) - 1],
-            'name' => $name,
-            'model' => $model,
-            'input' => $input,
-            'output' => $output,
-            'startTime' => $startTime,
-            'completionStartTime' => $completionStartTime,
-            'endTime' => self::now(),
-            'usageDetails' => ['input' => $inputTokens, 'output' => $outputTokens],
-            'metadata' => $metadata === [] ? null : $metadata,
-        ], static fn (mixed $value): bool => $value !== null));
+        $attributes = [
+            'langfuse.observation.type' => 'generation',
+            'langfuse.observation.model.name' => $model,
+            'langfuse.observation.input' => self::json($input),
+            'langfuse.observation.output' => self::json($output),
+            'langfuse.observation.usage_details' => self::json(['input' => $inputTokens, 'output' => $outputTokens, 'total' => $inputTokens + $outputTokens]),
+        ];
+        if ($completionStartTime !== null) {
+            $attributes['langfuse.observation.completion_start_time'] = self::iso($completionStartTime);
+        }
+        foreach ($metadata as $key => $value) {
+            $attributes['langfuse.observation.metadata.'.$key] = $value;
+        }
+
+        $this->spans[] = $this->otlpSpan(self::spanId(), $this->currentParent(), $name, $startTime, self::now(), $attributes);
     }
 
     /**
-     * Envoie les événements en attente en un seul lot, puis repart de zéro.
+     * Envoie les étapes en attente en un seul lot OTLP, puis repart de zéro. Une trace dont
+     * l'étape racine n'a pas été fermée (exception en cours de route) est close en erreur.
      */
     public function flush(): void
     {
-        $events = $this->events;
+        if ($this->root !== null) {
+            $this->root['attributes']['langfuse.observation.level'] = 'ERROR';
+            $this->spans[] = $this->otlpSpan($this->root['spanId'], null, $this->root['name'], $this->root['start'], self::now(), $this->root['attributes'], 'Trace interrompue avant sa fin');
+        }
+
+        $spans = $this->spans;
         $this->reset();
 
-        if ($events === [] || !$this->enabled()) {
+        if ($spans === [] || !$this->enabled()) {
             return;
         }
 
         try {
-            $response = $this->httpClient->request('POST', rtrim($this->baseUrl, '/').'/api/public/ingestion', [
+            $response = $this->httpClient->request('POST', rtrim($this->baseUrl, '/').'/api/public/otel/v1/traces', [
                 'auth_basic' => [$this->publicKey, $this->secretKey],
-                'json' => ['batch' => $events],
+                'headers' => ['x-langfuse-ingestion-version' => '4'],
+                'json' => ['resourceSpans' => [[
+                    'resource' => ['attributes' => self::attributes(['service.name' => 'erp-assistant'])],
+                    'scopeSpans' => [['scope' => ['name' => 'erp-assistant'], 'spans' => $spans]],
+                ]]],
                 'timeout' => 10,
             ]);
 
-            // 207 : chaque événement a son propre statut ; on journalise ceux que Langfuse a refusés.
-            $body = $response->toArray(false);
             $status = $response->getStatusCode();
-            if (($status >= 300 && $status !== 207) || ($body['errors'] ?? []) !== []) {
+            $body = $response->toArray(false);
+            $rejected = (int) ($body['partialSuccess']['rejectedSpans'] ?? 0);
+            if ($status >= 300 || $rejected > 0) {
                 $this->logger->warning(sprintf(
-                    'Langfuse a refusé des événements (HTTP %d) : %s',
+                    'Langfuse a refusé des étapes (HTTP %d, %d rejetée(s)) : %s',
                     $status,
-                    json_encode($body['errors'] ?? $body, \JSON_UNESCAPED_UNICODE),
+                    $rejected,
+                    json_encode($body, \JSON_UNESCAPED_UNICODE),
                 ));
             }
         } catch (HttpClientException $e) {
@@ -194,58 +231,88 @@ final class LangfuseTracer implements ResetInterface
     public function reset(): void
     {
         $this->traceId = null;
-        $this->events = [];
+        $this->root = null;
+        $this->spans = [];
         $this->parents = [];
     }
 
     /**
-     * @param array<string, mixed> $metadata
+     * Horodatage en nanosecondes depuis l'époque Unix (format OTLP).
      */
-    private function recordSpan(
-        string $id,
-        ?string $parent,
-        string $name,
-        mixed $input,
-        mixed $output,
-        string $start,
-        array $metadata,
-        ?string $level = null,
-        ?string $statusMessage = null,
-    ): void {
-        $this->record('span-create', array_filter([
-            'id' => $id,
-            'traceId' => $this->traceId,
-            'parentObservationId' => $parent,
-            'name' => $name,
-            'input' => $input,
-            'output' => $output,
-            'startTime' => $start,
-            'endTime' => self::now(),
-            'metadata' => $metadata === [] ? null : $metadata,
-            'level' => $level,
-            'statusMessage' => $statusMessage,
-        ], static fn (mixed $value): bool => $value !== null));
+    public static function now(): string
+    {
+        return sprintf('%d000', (int) round(microtime(true) * 1_000_000));
+    }
+
+    private function currentParent(): ?string
+    {
+        return $this->parents === [] ? null : $this->parents[\count($this->parents) - 1];
     }
 
     /**
-     * @param array<string, mixed> $body
+     * @param array<string, mixed> $attributes
+     *
+     * @return array<string, mixed>
      */
-    private function record(string $type, array $body): void
+    private function otlpSpan(string $spanId, ?string $parentId, string $name, string $start, string $end, array $attributes, ?string $error = null): array
     {
-        $this->events[] = ['id' => self::uuid(), 'type' => $type, 'timestamp' => self::now(), 'body' => $body];
+        return array_filter([
+            'traceId' => $this->traceId,
+            'spanId' => $spanId,
+            'parentSpanId' => $parentId,
+            'name' => $name,
+            'kind' => 1, // SPAN_KIND_INTERNAL
+            'startTimeUnixNano' => $start,
+            'endTimeUnixNano' => $end,
+            'attributes' => self::attributes($attributes),
+            'status' => $error === null ? ['code' => 1] : ['code' => 2, 'message' => $error],
+        ], static fn (mixed $value): bool => $value !== null);
     }
 
-    public static function now(): string
+    /**
+     * Attributs OTLP typés : chaînes, entiers, booléens, listes de chaînes ; le reste en JSON.
+     *
+     * @param array<string, mixed> $attributes
+     *
+     * @return list<array{key: string, value: array<string, mixed>}>
+     */
+    private static function attributes(array $attributes): array
     {
-        return (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.v\Z');
+        $otlp = [];
+        foreach ($attributes as $key => $value) {
+            if ($value === null) {
+                continue;
+            }
+            $otlp[] = ['key' => $key, 'value' => match (true) {
+                \is_bool($value) => ['boolValue' => $value],
+                \is_int($value) => ['intValue' => (string) $value],
+                \is_float($value) => ['doubleValue' => $value],
+                \is_string($value) => ['stringValue' => $value],
+                \is_array($value) && array_is_list($value) && array_filter($value, 'is_string') === $value => [
+                    'arrayValue' => ['values' => array_map(static fn (string $v): array => ['stringValue' => $v], $value)],
+                ],
+                default => ['stringValue' => self::json($value)],
+            }];
+        }
+
+        return $otlp;
     }
 
-    private static function uuid(): string
+    private static function json(mixed $value): string
     {
-        $bytes = random_bytes(16);
-        $bytes[6] = \chr(\ord($bytes[6]) & 0x0F | 0x40);
-        $bytes[8] = \chr(\ord($bytes[8]) & 0x3F | 0x80);
+        return \is_string($value) ? $value : (string) json_encode($value, \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES | \JSON_PARTIAL_OUTPUT_ON_ERROR);
+    }
 
-        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
+    private static function iso(string $unixNano): string
+    {
+        $microseconds = intdiv((int) $unixNano, 1000);
+
+        return \DateTimeImmutable::createFromFormat('U.u', sprintf('%d.%06d', intdiv($microseconds, 1_000_000), $microseconds % 1_000_000), new \DateTimeZone('UTC'))
+            ->format('Y-m-d\TH:i:s.u\Z');
+    }
+
+    private static function spanId(): string
+    {
+        return bin2hex(random_bytes(8));
     }
 }

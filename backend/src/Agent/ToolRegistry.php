@@ -57,7 +57,7 @@ final class ToolRegistry
         }
 
         try {
-            return $this->tracer->span('outil '.$name, $arguments, static fn (): array => $tool->execute($arguments));
+            return $this->tracer->span('outil '.$name, $arguments, static fn (): array => $tool->execute($arguments), type: 'tool');
         } catch (\Throwable $e) {
             $this->logger->error('Échec d\'un outil de l\'agent', ['outil' => $name, 'arguments' => $arguments, 'exception' => $e]);
 

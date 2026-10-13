@@ -27,7 +27,7 @@ final class AgentToolHandler implements ToolHandlerInterface
         // Une trace par appel, envoyée aussitôt : le serveur MCP (stdio) est un processus qui reste ouvert.
         $this->tracer->startTrace('mcp '.$this->tool->name(), $arguments, [], ['mcp']);
         try {
-            $result = $this->tracer->span('outil '.$this->tool->name(), $arguments, fn (): array => $this->tool->execute($arguments));
+            $result = $this->tracer->span('outil '.$this->tool->name(), $arguments, fn (): array => $this->tool->execute($arguments), type: 'tool');
             $this->tracer->endTrace($result);
         } finally {
             $this->tracer->flush();

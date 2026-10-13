@@ -48,6 +48,7 @@ final class DocumentRetriever
                 RetrievalMode::HybridRerank => $this->reranker->rerank($query, $this->hybrid($query, self::RERANK_POOL), $limit),
             },
             self::describe(...),
+            type: 'retriever',
         );
     }
 
@@ -83,8 +84,8 @@ final class DocumentRetriever
         $scores = [];
 
         $rankings = [
-            $this->tracer->span('vecteurs', $query, fn (): array => $this->vectorRetriever->search($query, self::CANDIDATES), self::describe(...)),
-            $this->tracer->span('plein texte', $query, fn (): array => $this->fulltextRetriever->search($query, self::CANDIDATES), self::describe(...)),
+            $this->tracer->span('vecteurs', $query, fn (): array => $this->vectorRetriever->search($query, self::CANDIDATES), self::describe(...), type: 'retriever'),
+            $this->tracer->span('plein texte', $query, fn (): array => $this->fulltextRetriever->search($query, self::CANDIDATES), self::describe(...), type: 'retriever'),
         ];
 
         foreach ($rankings as $ranking) {
