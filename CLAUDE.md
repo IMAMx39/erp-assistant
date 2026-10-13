@@ -13,7 +13,7 @@ Le projet doit rester présentable à un recruteur : code propre, commits régul
 
 ## Stack et environnement
 
-- Mac avec **OrbStack** (pas Docker Desktop). Projet monté depuis `/Volumes/kawimdev/Project/erp-assistant`.
+- Mac avec **Docker Desktop** (binaire `/Volumes/kawimdev/Docker.app/Contents/Resources/bin/docker`, VM de 3,9 Go). Projet monté depuis `/Volumes/kawimdev/Project/erp-assistant`.
 - Docker Compose : `php` (PHP 8.2-FPM), `worker` (Messenger), `nginx`, `mariadb` (11.8, support vectoriel natif), `frontend` (Node 22, Next.js).
 - **PHP 8.2** : toute dépendance doit être compatible. Ne jamais installer un paquet qui exige PHP 8.4 (ex. composants Symfony 8).
 - Backend : **Symfony 7.4**, Doctrine ORM (attributs), Messenger (transport Doctrine).
@@ -40,6 +40,7 @@ docker compose exec php php bin/console app:corpus:ingest [--force]
 make eval MODE=hybrid_rerank EVAL_DELAY=18000   # évaluation complète promptfoo, synthèse dans evals/results/latest.md
 make eval-retrieval MODE=hybrid [LIMIT=10]      # recherche seule, par section, sans LLM (sauf hybrid_rerank : RETRIEVAL_DELAY=12000)
 make fixtures                                   # recharge les données de l'ERP fictif sans toucher à l'index documentaire
+docker compose exec -T php php bin/console mcp:server   # serveur MCP en stdio (Claude Desktop : docs/claude_desktop_config.example.json)
 ```
 
 Toujours préfixer par `php` : `php bin/console`, jamais `bin/console` seul.
@@ -58,7 +59,7 @@ backend/src/
 ├── Agent/           # ToolRegistry ; Tool/ : 7 outils en lecture seule (get_article, search_articles, get_stock, get_customer, get_customer_order, get_purchase_order, restock_suggestions)
 ├── Erp/             # ERP fictif (tables erp_*) : Entity/, Enum/ (statuts avec libellés du corpus), Service/ (stock disponible, encours, réapprovisionnement)
 ├── DataFixtures/    # ErpFixtures : données écrites à la main, reproductibles (make fixtures)
-└── Mcp/             # serveur MCP
+└── Mcp/             # serveur MCP (symfony/mcp-bundle) : ErpToolLoader expose les outils de l'agent + search_documentation, en stdio
 ```
 
 Autres dossiers : `corpus/` (documentation Markdown), `evals/` (promptfoo), `frontend/`, `docker/`.
@@ -101,6 +102,8 @@ Autres dossiers : `corpus/` (documentation Markdown), `evals/` (promptfoo), `fro
 - [x] **J7** — Recherche hybride (FULLTEXT MariaDB + vecteurs, fusion RRF) et reranking, puis nouvelle mesure (`evals/results/j7-recherche.md`) : section trouvée 93 % → 100 %, MRR 0,82 → 0,99 ; mode par défaut `hybrid_rerank`. **Reste à faire** : la mesure complète des réponses (`make eval MODE=hybrid_rerank EVAL_DELAY=18000`), interrompue par le quota Groq après 26/54 questions, toutes réussies.
 - [x] **J8** — ERP fictif (entités + fixtures cohérentes avec le corpus), outils de l'agent, tool calling (`evals/results/j8-agent.md`) : 15 questions sur les données, bon outil et valeurs exactes 14/14 après corrections (gpt-oss-120b). Agent Claude vérifié hors ligne seulement.
 - [ ] **J9** — Serveur MCP (testé dans Claude Desktop), traces Langfuse (compose séparé). Sacrifiable si retard.
+  - [x] Serveur MCP : 8 outils en lecture seule (7 de l'agent + `search_documentation`), stdio, **testé dans Claude Desktop**.
+  - [ ] Traces Langfuse : à décider (Langfuse Cloud ou abandon).
 - [ ] **J10** — CI GitHub Actions avec évaluation automatique, déploiement sur le serveur AWS, README (schéma d'architecture + résultats chiffrés).
 
 Hors périmètre pour l'instant : multi-tenant.
@@ -127,3 +130,4 @@ Hors périmètre pour l'instant : multi-tenant.
 - Depuis `backend/`, `docker compose` lit `backend/compose.yaml` (fichier Postgres laissé par la recette Doctrine) au lieu du compose racine : lancer les commandes depuis la racine du projet.
 - En mode non-debug (`new Kernel('dev', false)`), Symfony réutilise un conteneur compilé ancien : utiliser le mode debug dans les scripts de test.
 - `docker compose run evals` redémarre ses dépendances (nginx, php) si leur configuration diffère : les cibles d'évaluation utilisent `--no-deps` (la pile doit déjà tourner, `make up`).
+- Serveur MCP : la sortie standard doit rester du JSON-RPC pur (les logs Symfony vont sur la sortie d'erreur). Lancer `mcp:server` sans `--no-debug` (sinon conteneur compilé périmé). Claude Desktop n'hérite pas du PATH du terminal : chemin absolu de `docker` dans sa configuration.

@@ -1,0 +1,20 @@
+# Serveur MCP : expose les outils de l'agent (ERP fictif) et la recherche documentaire
+# à un client MCP (Claude Desktop, Claude Code…) via `php bin/console mcp:server`.
+mcp:
+    servers:
+        gestix:
+            name: 'gestix-erp'
+            version: '1.0.0'
+            description: "ERP fictif Gestix (Distrilog SAS) : documentation et données en lecture seule"
+            instructions: >-
+                Outils en lecture seule sur l'ERP fictif Gestix de la société Distrilog : articles (ART-xxxxx),
+                stocks des entrepôts ORL et LYO, clients (CLI-xxxxx), commandes clients (CC-) et fournisseurs (CF-),
+                factures, suggestions de réapprovisionnement, et recherche dans la documentation utilisateur.
+                Réponds en français.
+            transports:
+                stdio: true
+                http: false
+            session:
+                store: memory
+            # Les outils sont enregistrés par App\Mcp\ErpToolLoader, pas par découverte d'attributs.
+            registry: '*'

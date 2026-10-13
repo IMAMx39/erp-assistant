@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "gestix-erp": {
+      "command": "/Volumes/kawimdev/Docker.app/Contents/Resources/bin/docker",
+      "args": [
+        "compose",
+        "-f",
+        "/Volumes/kawimdev/Project/erp-assistant/docker-compose.yml",
+        "exec",
+        "-T",
+        "php",
+        "php",
+        "bin/console",
+        "mcp:server"
+      ]
+    }
+  }
+}
