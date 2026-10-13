@@ -13,7 +13,7 @@ Le projet doit rester présentable à un recruteur : code propre, commits régul
 
 ## Stack et environnement
 
-- Mac avec **OrbStack** comme moteur Docker (contexte `orbstack`, VM de 3,9 Go) ; le binaire `docker` utilisé est `/Volumes/kawimdev/Docker.app/Contents/Resources/bin/docker`. OrbStack doit être démarré avant `make up`. Projet monté depuis `/Volumes/kawimdev/Project/erp-assistant`.
+- Mac avec **OrbStack** comme moteur Docker (contexte `orbstack`, VM de 3,9 Go), à démarrer avant `make up`. Chemins propres à la machine (binaire `docker`, dossier du projet) : voir `CLAUDE.local.md`, non versionné.
 - Docker Compose : `php` (PHP 8.2-FPM), `worker` (Messenger), `nginx`, `mariadb` (11.8, support vectoriel natif), `frontend` (Node 22, Next.js).
 - **PHP 8.2** : toute dépendance doit être compatible. Ne jamais installer un paquet qui exige PHP 8.4 (ex. composants Symfony 8).
 - Backend : **Symfony 7.4**, Doctrine ORM (attributs), Messenger (transport Doctrine).
@@ -40,7 +40,7 @@ docker compose exec php php bin/console app:corpus:ingest [--force]
 make eval MODE=hybrid_rerank EVAL_DELAY=18000   # évaluation complète promptfoo, synthèse dans evals/results/latest.md
 make eval-retrieval MODE=hybrid [LIMIT=10]      # recherche seule, par section, sans LLM (sauf hybrid_rerank : RETRIEVAL_DELAY=12000)
 make fixtures                                   # recharge les données de l'ERP fictif sans toucher à l'index documentaire
-docker compose exec -T php php bin/console mcp:server   # serveur MCP en stdio (Claude Desktop : docs/claude_desktop_config.example.json)
+docker compose exec -T php php bin/console mcp:server   # serveur MCP en stdio (Claude Desktop : docs/claude_desktop_config.example.json, chemins à adapter)
 ```
 
 Toujours préfixer par `php` : `php bin/console`, jamais `bin/console` seul.
@@ -106,6 +106,9 @@ Autres dossiers : `corpus/` (documentation Markdown), `evals/` (promptfoo), `fro
   - [x] Serveur MCP : 8 outils en lecture seule (7 de l'agent + `search_documentation`), stdio, **testé dans Claude Desktop**.
   - [x] Traces Langfuse Cloud en **OpenTelemetry** (OTLP/HTTP JSON, sans dépendance) : une trace par question (recherche et sous-étapes, appels LLM avec modèle, tokens et temps jusqu'au premier mot, outils) et une par appel MCP. **Vérifié sur le vrai Langfuse.**
 - [ ] **J10** — CI GitHub Actions avec évaluation automatique, déploiement sur le serveur AWS, README (schéma d'architecture + résultats chiffrés).
+  - [x] README : présentation, captures (`docs/images/`), schéma Mermaid, résultats chiffrés J6/J7/J8, installation, limites.
+  - [ ] CI GitHub Actions.
+  - [ ] Déploiement sur le serveur AWS.
 
 Hors périmètre pour l'instant : multi-tenant.
 
@@ -134,3 +137,4 @@ Hors périmètre pour l'instant : multi-tenant.
 - Serveur MCP : la sortie standard doit rester du JSON-RPC pur (les logs Symfony vont sur la sortie d'erreur). Lancer `mcp:server` sans `--no-debug` (sinon conteneur compilé périmé). Claude Desktop n'hérite pas du PATH du terminal : chemin absolu de `docker` dans sa configuration.
 - Langfuse : les traces partent en un lot OTLP à `kernel.terminate` (après la réponse) ; le serveur MCP, processus permanent, envoie une trace par appel. Une panne de Langfuse est journalisée, jamais bloquante.
 - Langfuse Cloud : l'ancienne API d'ingestion (`/api/public/ingestion`) est coupée le 16/11/2026 et l'ancienne API de lecture est fermée aux organisations récentes. Envoi via `/api/public/otel/v1/traces` (en-tête `x-langfuse-ingestion-version: 4`), relecture via `/api/public/v2/observations` avec `fields=core,basic,usage,model,time,io,metadata` (sinon modèle et tokens absents). Les traces apparaissent avec quelques secondes de délai.
+- Le `.gitignore` racine n'exclut que `/.env` (clés d'API) : `backend/.env` (valeurs par défaut de Symfony, sans secret) doit rester versionné, sinon le backend ne démarre pas sur un clone neuf. Ne jamais mettre de vraie clé dans `.env.example` (versionné, dépôt public).

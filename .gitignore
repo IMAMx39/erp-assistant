@@ -1,2 +1,5 @@
-.env
+# Secrets locaux (clés d'API) : seul le .env racine. backend/.env (valeurs par défaut de Symfony, sans secret) est versionné.
+/.env
 .idea
+# Instructions Claude Code propres à la machine (chemins personnels)
+CLAUDE.local.md
