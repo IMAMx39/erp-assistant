@@ -1,7 +1,7 @@
 // Synthèse d'une exécution promptfoo en Markdown : node summarize.mjs results/latest.json
 // Les taux sont calculés sur les seuls cas concernés (les questions hors corpus n'ont ni source
 // ni fait attendu), avec les mêmes fonctions que les assertions.
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
 const { retrieval, refusal, facts, citations } = createRequire(import.meta.url)("./assertions.cjs");
@@ -14,6 +14,10 @@ const CATEGORIES = {
 };
 
 const file = process.argv[2] ?? "results/latest.json";
+if (!existsSync(new URL(file, `file://${process.cwd()}/`))) {
+  console.error(`Aucun résultat dans ${file} : l'évaluation n'a pas abouti.`);
+  process.exit(1);
+}
 const data = JSON.parse(readFileSync(new URL(file, `file://${process.cwd()}/`), "utf8"));
 const rows = data.results.results;
 

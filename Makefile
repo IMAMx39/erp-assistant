@@ -39,6 +39,7 @@ ollama-pull:
 EVAL_DELAY ?= 6000
 MODE ?= vector
 eval:
+	@rm -f evals/results/latest.json evals/results/latest.html
 	-docker compose --profile evals run --rm evals eval -c promptfooconfig.yaml --no-cache -j 1 --delay $(EVAL_DELAY) --var mode=$(MODE) -o results/latest.json -o results/latest.html
 	docker compose --profile evals run --rm --no-deps --entrypoint node evals summarize.mjs results/latest.json > evals/results/latest.md
 	@cat evals/results/latest.md
@@ -49,6 +50,7 @@ eval:
 RETRIEVAL_DELAY ?= 0
 LIMIT ?= 5
 eval-retrieval:
+	@rm -f evals/results/retrieval-$(MODE)-$(LIMIT).json
 	-docker compose --profile evals run --rm evals eval -c retrieval.yaml --no-cache -j 1 --delay $(RETRIEVAL_DELAY) --var mode=$(MODE) --var limit=$(LIMIT) --filter-pattern '^(?!refus-)' -o results/retrieval-$(MODE)-$(LIMIT).json
 	docker compose --profile evals run --rm --no-deps --entrypoint node evals summarize-retrieval.mjs results/retrieval-$(MODE)-$(LIMIT).json > evals/results/retrieval-$(MODE)-$(LIMIT).md
 	@cat evals/results/retrieval-$(MODE)-$(LIMIT).md
