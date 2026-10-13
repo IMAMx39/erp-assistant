@@ -5,15 +5,19 @@ declare(strict_types=1);
 namespace App\Chat\Generator;
 
 /**
- * Sépare un texte reçu au fil de l'eau en morceaux de texte et marqueurs de citation [n] / [1, 3].
+ * Sépare un texte reçu au fil de l'eau en morceaux de texte et marqueurs de citation [n] / [1, 3] / 【n】.
  *
  * Un marqueur peut être coupé entre deux morceaux du flux (« [1, » puis « 3] ») :
  * la fin du tampon qui ressemble à un début de marqueur est retenue jusqu'au morceau suivant.
+ * Les espaces juste avant un marqueur sont supprimées (« clôturer [2]. » donne « clôturer. ») ;
+ * les espaces en fin de tampon sont donc retenues elles aussi, le temps de voir ce qui suit.
  */
 final class CitationMarkerParser
 {
-    private const MARKER = '/\[(\d{1,2}(?:\s*,\s*\d{1,2})*)\]/';
-    private const PARTIAL_MARKER = '/\[[\d,\s]{0,12}$/';
+    // Crochets ASCII ou « 【3】 », que certains modèles (gpt-oss) utilisent à la place.
+    private const MARKER = '/(?:\[|【)(\d{1,2}(?:\s*,\s*\d{1,2})*)(?:\]|】)/u';
+    // \h couvre aussi les espaces insécables (U+00A0, U+202F) placées avant un marqueur.
+    private const PARTIAL_MARKER = '/\h*((?:\[|【)[\d,\s]{0,12})?$/u';
 
     private string $buffer = '';
 
@@ -45,8 +49,9 @@ final class CitationMarkerParser
         while (preg_match(self::MARKER, $this->buffer, $match, \PREG_OFFSET_CAPTURE) === 1) {
             [$marker, $offset] = $match[0];
 
-            if ($offset > 0) {
-                $tokens[] = ['type' => 'text', 'text' => substr($this->buffer, 0, $offset)];
+            $before = (string) preg_replace('/\h+$/u', '', substr($this->buffer, 0, $offset));
+            if ($before !== '') {
+                $tokens[] = ['type' => 'text', 'text' => $before];
             }
 
             $tokens[] = [
