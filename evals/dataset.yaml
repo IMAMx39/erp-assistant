@@ -575,3 +575,131 @@
     sources: []
     sections: []
     facts: []
+
+# --- Agent : données de l'ERP fictif (src/DataFixtures/ErpFixtures.php) ---------------------------
+# tools : outils acceptables, au moins un doit être appelé. Valeurs attendues issues des fixtures.
+
+- description: agent-stock-disponible-orl
+  vars:
+    category: agent
+    question: Combien de ART-10452 sont disponibles à Orly ?
+    tools: [get_article, get_stock]
+    facts:
+      - ["87"]
+
+- description: agent-stock-disponible-lyo
+  vars:
+    category: agent
+    question: Quel est le stock disponible de l'article ART-10452 à Lyon ?
+    tools: [get_article, get_stock]
+    facts:
+      - ["25"]
+
+- description: agent-stock-reserve
+  vars:
+    category: agent
+    question: Combien d'unités de ART-10452 sont réservées par des commandes à Orly ?
+    tools: [get_article]
+    facts:
+      - ["42"]
+
+- description: agent-stock-litige
+  vars:
+    category: agent
+    question: Y a-t-il du stock en litige pour l'article ART-10452 ?
+    tools: [get_article, get_stock]
+    facts:
+      - ["6"]
+
+- description: agent-emplacements
+  vars:
+    category: agent
+    question: Sur quels emplacements d'Orly l'article ART-10452 est-il stocké ?
+    tools: [get_stock]
+    facts:
+      - [a-03-2]
+      - [b-02-1]
+
+- description: agent-article-bloque
+  vars:
+    category: agent
+    question: Peut-on vendre la perceuse-visseuse ART-20131 ?
+    tools: [get_article]
+    facts:
+      - [bloque]
+
+- description: agent-recherche-article
+  vars:
+    category: agent
+    question: Quel est le code article des gants de manutention ?
+    tools: [search_articles]
+    facts:
+      - [art-30205]
+
+- description: agent-commande-bloquee-encours
+  vars:
+    category: agent
+    question: Pourquoi la commande CC-24060 est-elle bloquée ?
+    tools: [get_customer_order, get_customer]
+    facts:
+      - [encours]
+      - [plafond, "5000"]
+
+- description: agent-commande-bloquee-relance
+  vars:
+    category: agent
+    question: Pourquoi la commande CC-24062 est-elle bloquée ?
+    tools: [get_customer_order, get_customer]
+    facts:
+      - [relance, mise en demeure]
+
+- description: agent-encours-client
+  vars:
+    category: agent
+    question: Quel est l'encours actuel du client Ateliers Fontaine ?
+    tools: [get_customer]
+    facts:
+      - ["5609"]
+
+- description: agent-factures-retard
+  vars:
+    category: agent
+    question: Le client BTP Lefèvre a-t-il des factures en retard ?
+    tools: [get_customer]
+    facts:
+      - [fa-24-0187]
+      - [niveau 3, mise en demeure]
+
+- description: agent-reliquat-fournisseur
+  vars:
+    category: agent
+    question: Combien reste-t-il à recevoir sur la commande fournisseur CF-24018 ?
+    tools: [get_purchase_order]
+    facts:
+      - ["48"]
+
+- description: agent-validation-fournisseur
+  vars:
+    category: agent
+    question: Qui doit valider la commande fournisseur CF-24024 ?
+    tools: [get_purchase_order]
+    facts:
+      - [administrateur]
+
+- description: agent-reappro-orly
+  vars:
+    category: agent
+    question: Quels articles faut-il réapprovisionner à Orly ?
+    tools: [restock_suggestions]
+    facts:
+      - [art-30205]
+      - [art-40310]
+      - [art-60502]
+
+- description: agent-reappro-quantite
+  vars:
+    category: agent
+    question: Quelle quantité de gants ART-30205 Gestix suggère-t-il de commander ?
+    tools: [restock_suggestions]
+    facts:
+      - ["144"]

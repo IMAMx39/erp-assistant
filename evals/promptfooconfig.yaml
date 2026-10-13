@@ -36,6 +36,9 @@ defaultTest:
     - type: javascript
       value: file://assertions.cjs:citations
       metric: citations
+    - type: javascript
+      value: file://assertions.cjs:toolUsed
+      metric: outils
 
 tests: file://dataset.yaml
 

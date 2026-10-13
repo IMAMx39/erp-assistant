@@ -24,7 +24,7 @@ function normalize(text) {
 
 /** Recherche : au moins une source acceptée figure parmi les extraits retrouvés. */
 function retrieval(output, { vars }) {
-  if (vars.category === "refusal") return notApplicable;
+  if (vars.category === "refusal" || vars.category === "agent") return notApplicable;
   const found = response(output).sources.map((s) => s.documentPath);
   const hit = vars.sources.some((path) => found.includes(path));
   return {
@@ -60,7 +60,7 @@ function facts(output, { vars }) {
 
 /** Citations : au moins une citation, et toutes pointent vers une source acceptée. */
 function citations(output, { vars }) {
-  if (vars.category === "refusal") return notApplicable;
+  if (vars.category === "refusal" || vars.category === "agent") return notApplicable;
   const cited = [...new Set(response(output).citations.map((c) => c.documentPath))];
   const wrong = cited.filter((path) => !vars.sources.includes(path));
   const pass = cited.length > 0 && wrong.length === 0;
@@ -76,7 +76,7 @@ function citations(output, { vars }) {
  * les extraits. Score = 1 / rang (réciproque du rang, moyenné en MRR), 0 si absente.
  */
 function sectionRank(output, { vars }) {
-  if (vars.category === "refusal") return notApplicable;
+  if (vars.category === "refusal" || vars.category === "agent") return notApplicable;
   const headings = response(output).results.map((r) => r.heading);
   const index = headings.findIndex((heading) => vars.sections.includes(heading));
   return {
@@ -86,4 +86,16 @@ function sectionRank(output, { vars }) {
   };
 }
 
-module.exports = { retrieval, refusal, facts, citations, sectionRank, normalize };
+/** Agent : au moins un des outils attendus a été appelé (questions sur les données de l'ERP). */
+function toolUsed(output, { vars }) {
+  if (vars.category !== "agent") return notApplicable;
+  const called = (response(output).tools ?? []).map((t) => t.name);
+  const pass = vars.tools.some((name) => called.includes(name));
+  return {
+    pass,
+    score: pass ? 1 : 0,
+    reason: pass ? `Outils appelés : ${called.join(", ")}` : `Outil attendu : ${vars.tools.join(" ou ")} ; appelés : ${called.join(", ") || "aucun"}`,
+  };
+}
+
+module.exports = { retrieval, refusal, facts, citations, sectionRank, toolUsed, normalize };

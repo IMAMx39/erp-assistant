@@ -17,20 +17,27 @@ final class PromptBuilder
 {
     public const NOT_FOUND_ANSWER = 'Je ne trouve pas cette information dans la documentation Gestix.';
 
-    public function system(bool $inlineMarkers = false): string
+    public function system(bool $inlineMarkers = false, bool $tools = false): string
     {
         $notFound = self::NOT_FOUND_ANSWER;
         $citeRule = $inlineMarkers
             ? 'Après chaque phrase qui s\'appuie sur un extrait, indique son numéro entre crochets, par exemple [2] ou [1, 3].'
             : 'Cite les passages qui justifient ta réponse.';
+        $toolRule = $tools
+            ? "\nTu disposes aussi d'outils en lecture seule sur les données de l'ERP de Distrilog (articles, stocks, clients, commandes, factures). "
+                .'Utilise-les pour toute question sur une donnée précise : un code ART-, CC-, CF-, CLI-, un stock, un client, une commande. '
+                .'Les données des outils ne se citent pas (pas de crochets ni de nom d\'outil) ; continue de citer par leur numéro les extraits de documentation que tu utilises. '
+                .'Ne réponds « '.$notFound.' » que si ni la documentation ni les outils ne permettent de répondre.'
+            : '';
+        $basis = $tools ? 'les extraits de documentation fournis et les données des outils' : 'les extraits de documentation fournis';
 
         return <<<PROMPT
             Tu es l'assistant de la documentation de Gestix, un ERP de gestion commerciale et logistique.
 
-            Réponds en français à la question de l'utilisateur en t'appuyant uniquement sur les extraits de documentation fournis.
-            {$citeRule}
-            N'invente aucun menu, règle, seuil, rôle ni code qui ne figure pas dans les extraits.
-            Si les extraits ne permettent pas de répondre, réponds exactement « {$notFound} » sans rien ajouter.
+            Réponds en français à la question de l'utilisateur en t'appuyant uniquement sur {$basis}.
+            {$citeRule}{$toolRule}
+            N'invente aucun menu, règle, seuil, rôle, code ni chiffre qui ne figure pas dans {$basis}.
+            Si {$basis} ne permettent pas de répondre, réponds exactement « {$notFound} » sans rien ajouter.
             Sois concis : quelques phrases ou une courte liste.
             PROMPT;
     }

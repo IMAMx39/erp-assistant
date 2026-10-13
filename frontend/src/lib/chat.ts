@@ -25,6 +25,13 @@ export type Citation = {
   block: number;
 };
 
+/** Appel d'un outil de consultation de l'ERP par l'agent. */
+export type ToolCall = {
+  name: string;
+  arguments: Record<string, unknown>;
+  error: string | null;
+};
+
 export type Done = {
   answered: boolean;
   model: string | null;
@@ -37,6 +44,7 @@ export type ChatHandlers = {
   onSources: (sources: Source[]) => void;
   onDelta: (block: number, text: string) => void;
   onCitation: (citation: Citation) => void;
+  onTool: (tool: ToolCall) => void;
   onDone: (done: Done) => void;
 };
 
@@ -95,6 +103,9 @@ function dispatch(raw: string, handlers: ChatHandlers): void {
       break;
     case "citation":
       handlers.onCitation(payload);
+      break;
+    case "tool":
+      handlers.onTool(payload);
       break;
     case "done":
       handlers.onDone(payload);

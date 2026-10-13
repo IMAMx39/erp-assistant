@@ -84,6 +84,7 @@ final class ChatService
         $sources = [];
         $answer = '';
         $citations = [];
+        $tools = [];
         $done = $this->done(false, null, null, 0, 0);
 
         foreach ($this->stream($question, $mode) as $event) {
@@ -91,6 +92,7 @@ final class ChatService
                 ChatEvent::SOURCES => $sources = $event->data,
                 ChatEvent::DELTA => $answer .= $event->data['text'],
                 ChatEvent::CITATION => $citations[] = $event->data,
+                ChatEvent::TOOL => $tools[] = $event->data,
                 ChatEvent::DONE => $done = $event->data,
                 default => null,
             };
@@ -101,6 +103,7 @@ final class ChatService
             trim($answer),
             $done['answered'],
             $citations,
+            $tools,
             $sources,
             $done['model'],
             $done['stopReason'],

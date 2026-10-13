@@ -39,6 +39,7 @@ docker compose logs -f worker
 docker compose exec php php bin/console app:corpus:ingest [--force]
 make eval MODE=hybrid_rerank EVAL_DELAY=18000   # évaluation complète promptfoo, synthèse dans evals/results/latest.md
 make eval-retrieval MODE=hybrid [LIMIT=10]      # recherche seule, par section, sans LLM (sauf hybrid_rerank : RETRIEVAL_DELAY=12000)
+make fixtures                                   # recharge les données de l'ERP fictif sans toucher à l'index documentaire
 ```
 
 Toujours préfixer par `php` : `php bin/console`, jamais `bin/console` seul.
@@ -54,8 +55,9 @@ backend/src/
 ├── Ingestion/       # Parser/, Chunker/, Dto/, Message/, MessageHandler/, Command/
 ├── Retrieval/       # DocumentRetriever (mode vector | hybrid | hybrid_rerank), VectorRetriever, FulltextRetriever, LlmReranker, GET /api/search
 ├── Chat/            # ChatService (RAG), PromptBuilder, Generator/ (Anthropic, Chat Completions), POST /api/chat (JSON) et /api/chat/stream (SSE)
-├── Agent/Tool/      # outils de consultation de l'ERP fictif
-├── Erp/Entity/      # ERP fictif : Article, Entrepot, Emplacement, Stock, Commande…
+├── Agent/           # ToolRegistry ; Tool/ : 7 outils en lecture seule (get_article, search_articles, get_stock, get_customer, get_customer_order, get_purchase_order, restock_suggestions)
+├── Erp/             # ERP fictif (tables erp_*) : Entity/, Enum/ (statuts avec libellés du corpus), Service/ (stock disponible, encours, réapprovisionnement)
+├── DataFixtures/    # ErpFixtures : données écrites à la main, reproductibles (make fixtures)
 └── Mcp/             # serveur MCP
 ```
 
@@ -119,3 +121,8 @@ Hors périmètre pour l'instant : multi-tenant.
 - promptfoo démultiplie les variables de type liste en plusieurs tests : `PROMPTFOO_DISABLE_VAR_EXPANSION=1` dans le service `evals`.
 - La liste de mots vides d'InnoDB est anglaise : `FulltextRetriever` retire lui-même les mots vides français de la question (sans « avoir », terme métier).
 - Sur ce corpus, la recherche plein texte seule n'apporte rien (pas de racinisation) : son intérêt est d'élargir le vivier de 10 candidats soumis au reclassement. Le reclassement par LLM ajoute ~1 500 tokens Groq par question.
+- `doctrine:fixtures:load` vide **toutes** les tables par défaut, index documentaire compris : toujours passer par `make fixtures` (exclusions `document`, `chunk`, `messenger_messages`, `doctrine_migration_versions`).
+- Les questions d'évaluation de l'agent (`agent-*`) dépendent des valeurs des fixtures : modifier `ErpFixtures` impose de mettre à jour `evals/dataset.yaml`.
+- Agent Claude : le message de l'assistant (réflexion signée comprise) doit être renvoyé à l'identique à chaque tour d'outils ; il est reconstitué par `MessageAccumulator` du SDK. Vérifié hors ligne (réponses simulées), pas encore avec l'API réelle.
+- Depuis `backend/`, `docker compose` lit `backend/compose.yaml` (fichier Postgres laissé par la recette Doctrine) au lieu du compose racine : lancer les commandes depuis la racine du projet.
+- En mode non-debug (`new Kernel('dev', false)`), Symfony réutilise un conteneur compilé ancien : utiliser le mode debug dans les scripts de test.

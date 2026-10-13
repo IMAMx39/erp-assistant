@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChatError, streamChat, type Citation, type Done, type Source } from "@/lib/chat";
+import { ChatError, streamChat, type Citation, type Done, type Source, type ToolCall } from "@/lib/chat";
 import { AnswerView } from "./AnswerView";
 import { Composer } from "./Composer";
 import { SourcesPanel } from "./SourcesPanel";
+import { ToolCalls } from "./ToolCalls";
 
 type Turn = {
   id: number;
@@ -13,6 +14,7 @@ type Turn = {
   sources: Source[];
   blocks: Record<number, string>;
   citations: Citation[];
+  tools: ToolCall[];
   done?: Done;
   error?: string;
 };
@@ -47,7 +49,7 @@ export function Chat() {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    setTurns((all) => [...all, { id, question, status: "searching", sources: [], blocks: {}, citations: [] }]);
+    setTurns((all) => [...all, { id, question, status: "searching", sources: [], blocks: {}, citations: [], tools: [] }]);
     setSelectedTurn(id);
     setActiveSource(null);
 
@@ -62,6 +64,7 @@ export function Chat() {
               blocks: { ...t.blocks, [block]: (t.blocks[block] ?? "") + text },
             })),
           onCitation: (citation) => update(id, (t) => ({ citations: [...t.citations, citation] })),
+          onTool: (tool) => update(id, (t) => ({ tools: [...t.tools, tool] })),
           onDone: (done) => update(id, () => ({ status: "done", done })),
         },
         controller.signal,
@@ -106,6 +109,7 @@ export function Chat() {
                       {turn.question}
                     </p>
 
+                    {turn.tools.length > 0 && <ToolCalls tools={turn.tools} />}
                     {turn.status === "searching" && (
                       <p className="text-sm text-zinc-500">
                         {turn.sources.length === 0 ? "Recherche dans la documentation…" : "Rédaction de la réponse…"}

@@ -12,6 +12,8 @@ final readonly class ChatEvent
     public const SOURCES = 'sources';
     public const DELTA = 'delta';
     public const CITATION = 'citation';
+    /** Appel d'un outil de l'agent : { name, arguments, error } */
+    public const TOOL = 'tool';
     public const DONE = 'done';
 
     /**

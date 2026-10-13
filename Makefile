@@ -1,7 +1,7 @@
 include .env
 export
 
-.PHONY: init init-backend init-frontend up down logs sh db ollama-pull eval eval-retrieval
+.PHONY: init init-backend init-frontend up down logs sh db ollama-pull eval eval-retrieval fixtures
 
 init: init-backend init-frontend
 
@@ -51,6 +51,12 @@ RETRIEVAL_DELAY ?= 0
 LIMIT ?= 5
 eval-retrieval:
 	@rm -f evals/results/retrieval-$(MODE)-$(LIMIT).json
-	-docker compose --profile evals run --rm evals eval -c retrieval.yaml --no-cache -j 1 --delay $(RETRIEVAL_DELAY) --var mode=$(MODE) --var limit=$(LIMIT) --filter-pattern '^(?!refus-)' -o results/retrieval-$(MODE)-$(LIMIT).json
+	-docker compose --profile evals run --rm evals eval -c retrieval.yaml --no-cache -j 1 --delay $(RETRIEVAL_DELAY) --var mode=$(MODE) --var limit=$(LIMIT) --filter-pattern '^(?!refus-|agent-)' -o results/retrieval-$(MODE)-$(LIMIT).json
 	docker compose --profile evals run --rm --no-deps --entrypoint node evals summarize-retrieval.mjs results/retrieval-$(MODE)-$(LIMIT).json > evals/results/retrieval-$(MODE)-$(LIMIT).md
 	@cat evals/results/retrieval-$(MODE)-$(LIMIT).md
+
+# Données de l'ERP fictif. Sans exclusions, doctrine:fixtures:load viderait aussi l'index documentaire.
+fixtures:
+	docker compose exec php php bin/console doctrine:fixtures:load -n \
+		--purge-exclusions=document --purge-exclusions=chunk \
+		--purge-exclusions=messenger_messages --purge-exclusions=doctrine_migration_versions

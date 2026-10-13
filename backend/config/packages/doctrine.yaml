@@ -30,6 +30,12 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Entity'
                 prefix: 'App\Entity'
                 alias: App
+            Erp:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Erp/Entity'
+                prefix: 'App\Erp\Entity'
+                alias: Erp
         controller_resolver:
             auto_mapping: false
 
