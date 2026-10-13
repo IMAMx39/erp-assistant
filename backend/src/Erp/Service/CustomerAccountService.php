@@ -18,7 +18,8 @@ final class CustomerAccountService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-    ) {
+    )
+    {
     }
 
     /**
@@ -30,19 +31,19 @@ final class CustomerAccountService
 
         $unpaid = array_values(array_filter(
             $this->entityManager->getRepository(Invoice::class)->findBy(['customer' => $customer], ['dueAt' => 'ASC']),
-            static fn (Invoice $invoice): bool => $invoice->getOutstandingAmount() > 0,
+            static fn(Invoice $invoice): bool => $invoice->getOutstandingAmount() > 0,
         ));
 
         $openOrders = array_values(array_filter(
             $this->entityManager->getRepository(CustomerOrder::class)->findBy(['customer' => $customer], ['orderedAt' => 'ASC']),
-            static fn (CustomerOrder $order): bool => $order->getStatus()->countsInOutstanding(),
+            static fn(CustomerOrder $order): bool => $order->getStatus()->countsInOutstanding(),
         ));
 
-        $unpaidTotal = array_sum(array_map(static fn (Invoice $i): float => $i->getOutstandingAmount(), $unpaid));
-        $ordersTotal = array_sum(array_map(static fn (CustomerOrder $o): float => $o->getTotalExcludingTax(), $openOrders));
+        $unpaidTotal = array_sum(array_map(static fn(Invoice $i): float => $i->getOutstandingAmount(), $unpaid));
+        $ordersTotal = array_sum(array_map(static fn(CustomerOrder $o): float => $o->getTotalExcludingTax(), $openOrders));
         $outstanding = round($unpaidTotal + $ordersTotal, 2);
-        $limit = (float) $customer->getCreditLimit();
-        $maxReminder = max([0, ...array_map(static fn (Invoice $i): int => $i->getReminderLevel(), $unpaid)]);
+        $limit = (float)$customer->getCreditLimit();
+        $maxReminder = max([0, ...array_map(static fn(Invoice $i): int => $i->getReminderLevel(), $unpaid)]);
 
         $blockingReasons = [];
         if ($outstanding > $limit) {
@@ -64,14 +65,14 @@ final class CustomerAccountService
             'dont_commandes_non_facturees' => round($ordersTotal, 2),
             'niveau_relance_max' => $maxReminder,
             'motifs_blocage' => $blockingReasons,
-            'factures_non_reglees' => array_map(static fn (Invoice $i): array => [
+            'factures_non_reglees' => array_map(static fn(Invoice $i): array => [
                 'facture' => $i->getNumber(),
                 'echeance' => $i->getDueAt()->format('Y-m-d'),
-                'jours_de_retard' => $i->isOverdue($today) ? (int) $i->getDueAt()->diff($today)->days : 0,
+                'jours_de_retard' => $i->isOverdue($today) ? (int)$i->getDueAt()->diff($today)->days : 0,
                 'reste_a_payer' => $i->getOutstandingAmount(),
                 'niveau_relance' => $i->getReminderLevel(),
             ], $unpaid),
-            'commandes_non_facturees' => array_map(static fn (CustomerOrder $o): array => [
+            'commandes_non_facturees' => array_map(static fn(CustomerOrder $o): array => [
                 'commande' => $o->getNumber(),
                 'statut' => $o->getStatus()->label(),
                 'montant_ht' => $o->getTotalExcludingTax(),

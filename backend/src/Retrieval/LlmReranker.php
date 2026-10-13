@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Retrieval;
 
+use App\Observability\LangfuseTracer;
 use App\Retrieval\Dto\SearchResult;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\Exception\ExceptionInterface as HttpClientException;
@@ -22,11 +23,13 @@ final class LlmReranker
 
     public function __construct(
         private readonly HttpClientInterface $httpClient,
-        private readonly LoggerInterface $logger,
-        private readonly string $url,
-        private readonly string $model,
-        private readonly string $apiKey,
-    ) {
+        private readonly LoggerInterface     $logger,
+        private readonly LangfuseTracer $tracer,
+        private readonly string              $url,
+        private readonly string              $model,
+        private readonly string              $apiKey,
+    )
+    {
     }
 
     /**
@@ -67,6 +70,20 @@ final class LlmReranker
             $extracts[] = sprintf("[%d] %s\n%s", $i + 1, $candidate->heading, mb_substr($candidate->content, 0, self::EXCERPT_LENGTH));
         }
 
+        $start = LangfuseTracer::now();
+        $messages = [
+            [
+                'role' => 'system',
+                'content' => 'Tu classes des extraits de documentation selon leur utilité pour répondre à une question. '
+                    . 'Réponds uniquement avec un objet JSON {"ranking": [...]} listant les numéros de tous les extraits, '
+                    . 'du plus utile au moins utile.',
+            ],
+            [
+                'role' => 'user',
+                'content' => "Question : {$query}\n\nExtraits :\n\n" . implode("\n\n", $extracts),
+            ],
+        ];
+
         $response = $this->httpClient->request('POST', $this->url, [
             'auth_bearer' => $this->apiKey,
             'json' => [
@@ -74,18 +91,7 @@ final class LlmReranker
                 'temperature' => 0,
                 'max_tokens' => 200,
                 'response_format' => ['type' => 'json_object'],
-                'messages' => [
-                    [
-                        'role' => 'system',
-                        'content' => 'Tu classes des extraits de documentation selon leur utilité pour répondre à une question. '
-                            .'Réponds uniquement avec un objet JSON {"ranking": [...]} listant les numéros de tous les extraits, '
-                            .'du plus utile au moins utile.',
-                    ],
-                    [
-                        'role' => 'user',
-                        'content' => "Question : {$query}\n\nExtraits :\n\n".implode("\n\n", $extracts),
-                    ],
-                ],
+                'messages' => $messages,
             ],
             'timeout' => 30,
         ]);
@@ -93,6 +99,16 @@ final class LlmReranker
         /** @var array{choices?: list<array{message?: array{content?: string}}>, usage?: array{prompt_tokens?: int, completion_tokens?: int}} $body */
         $body = $response->toArray();
         $content = $body['choices'][0]['message']['content'] ?? '';
+        $this->tracer->generation(
+            'reclassement',
+            $this->model,
+            $messages,
+            $content,
+            $start,
+            null,
+            (int) ($body['usage']['prompt_tokens'] ?? 0),
+            (int) ($body['usage']['completion_tokens'] ?? 0),
+        );
         $this->logger->info('Reclassement des extraits', [
             'candidats' => \count($candidates),
             'tokens_entree' => $body['usage']['prompt_tokens'] ?? null,
@@ -108,7 +124,7 @@ final class LlmReranker
         // Numéros valides et uniques, puis les candidats oubliés par le LLM, dans leur ordre d'origine.
         $order = [];
         foreach ($decoded['ranking'] as $number) {
-            $index = (int) $number - 1;
+            $index = (int)$number - 1;
             if (isset($candidates[$index]) && !\in_array($index, $order, true)) {
                 $order[] = $index;
             }

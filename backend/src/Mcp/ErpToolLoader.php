@@ -6,6 +6,7 @@ namespace App\Mcp;
 
 use App\Agent\Tool\AgentToolInterface;
 use App\Agent\ToolRegistry;
+use App\Observability\LangfuseTracer;
 use Mcp\Capability\Registry\Loader\ExplicitElementLoader;
 use Mcp\Capability\Registry\Loader\LoaderInterface;
 use Mcp\Capability\RegistryInterface;
@@ -21,12 +22,13 @@ final class ErpToolLoader implements LoaderInterface
     public function __construct(
         private readonly ToolRegistry $tools,
         private readonly DocumentationSearchTool $documentationSearch,
+        private readonly LangfuseTracer $tracer,
     ) {
     }
 
     public function load(RegistryInterface $registry): void
     {
-        $entries = array_map(static fn (AgentToolInterface $tool): array => [
+        $entries = array_map(fn (AgentToolInterface $tool): array => [
             'definition' => new Tool(
                 name: $tool->name(),
                 title: null,
@@ -34,7 +36,7 @@ final class ErpToolLoader implements LoaderInterface
                 description: $tool->description(),
                 annotations: new ToolAnnotations(readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false),
             ),
-            'handler' => new AgentToolHandler($tool),
+            'handler' => new AgentToolHandler($tool, $this->tracer),
         ], [...$this->tools->all(), $this->documentationSearch]);
 
         (new ExplicitElementLoader(tools: $entries))->load($registry);

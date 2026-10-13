@@ -24,9 +24,9 @@ final class MarkdownParser
         }
 
         return new ParsedDocument(
-            title: (string) ($meta['title'] ?? $fallbackTitle),
-            module: (string) ($meta['module'] ?? 'general'),
-            tags: array_values(array_map('strval', (array) ($meta['tags'] ?? []))),
+            title: (string)($meta['title'] ?? $fallbackTitle),
+            module: (string)($meta['module'] ?? 'general'),
+            tags: array_values(array_map('strval', (array)($meta['tags'] ?? []))),
             body: trim($body),
         );
     }

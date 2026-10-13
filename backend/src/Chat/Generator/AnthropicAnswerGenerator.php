@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Chat\Generator;
 
+use App\Observability\LangfuseTracer;
 use Anthropic\Client;
 use Anthropic\Core\Exceptions\AnthropicException;
 use Anthropic\Core\Exceptions\APIConnectionException;
@@ -47,6 +48,7 @@ final class AnthropicAnswerGenerator implements AnswerGeneratorInterface
         private readonly Client        $anthropic,
         private readonly PromptBuilder $promptBuilder,
         private readonly ToolRegistry  $tools,
+        private readonly LangfuseTracer $tracer,
         #[Autowire('%env(ANTHROPIC_MODEL)%')]
         private readonly string        $model,
     )
@@ -71,6 +73,9 @@ final class AnthropicAnswerGenerator implements AnswerGeneratorInterface
         try {
             for ($round = 1; ; ++$round) {
                 $accumulator = MessageAccumulator::forMessages();
+                $startTime = LangfuseTracer::now();
+                $firstTokenTime = null;
+                $roundInputTokens = 0;
                 $stream = $this->anthropic->messages->createStream(
                     maxTokens: self::MAX_TOKENS,
                     messages: $messages,
@@ -88,8 +93,10 @@ final class AnthropicAnswerGenerator implements AnswerGeneratorInterface
                     $accumulator->accumulate($event);
 
                     if ($event instanceof RawMessageStartEvent) {
-                        $inputTokens += (int)$event->message->usage->inputTokens;
+                        $roundInputTokens = (int) $event->message->usage->inputTokens;
+                        $inputTokens += $roundInputTokens;
                     } elseif ($event instanceof RawContentBlockDeltaEvent && $event->delta instanceof TextDelta) {
+                        $firstTokenTime ??= LangfuseTracer::now();
                         yield new ChatEvent(ChatEvent::DELTA, ['block' => $blockOffset + $event->index, 'text' => $event->delta->text]);
                     } elseif ($event instanceof RawContentBlockDeltaEvent && $event->delta instanceof CitationsDelta) {
                         $citation = $this->citation($event->delta, $blockOffset + $event->index, $sources);
@@ -105,6 +112,17 @@ final class AnthropicAnswerGenerator implements AnswerGeneratorInterface
                 $outputTokens += $roundOutputTokens;
 
                 $message = $accumulator->message();
+                $this->tracer->generation(
+                    sprintf('réponse (tour %d)', $round),
+                    $this->model,
+                    $messages,
+                    $message->content,
+                    $startTime,
+                    $firstTokenTime,
+                    $roundInputTokens,
+                    $roundOutputTokens,
+                    ['fournisseur' => 'Anthropic', 'fin' => $stopReason],
+                );
                 $blockOffset += \count($message->content);
                 $toolUses = array_values(array_filter($message->content, static fn(object $block): bool => $block instanceof ToolUseBlock));
 

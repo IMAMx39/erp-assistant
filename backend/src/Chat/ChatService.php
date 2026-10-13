@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Chat;
 
+use App\Observability\LangfuseTracer;
 use App\Chat\Dto\ChatAnswer;
 use App\Chat\Dto\ChatEvent;
 use App\Chat\Exception\GenerationFailedException;
@@ -28,6 +29,7 @@ final class ChatService
         private readonly ContainerInterface $generators,
         #[Autowire('%env(LLM_PROVIDER)%')]
         private readonly string             $provider,
+        private readonly LangfuseTracer $tracer,
     )
     {
     }
@@ -42,12 +44,16 @@ final class ChatService
     public function stream(string $question, ?RetrievalMode $mode = null): \Generator
     {
         $generator = $this->generator();
+        $mode ??= $this->retriever->defaultMode();
+        $this->tracer->startTrace('question', $question, ['fournisseur' => $this->provider, 'recherche' => $mode->value]);
+
         $sources = $this->retriever->search($question, self::RETRIEVAL_LIMIT, $mode);
         yield new ChatEvent(ChatEvent::SOURCES, $sources);
 
         // Index vide : inutile d'appeler le modèle.
         if ($sources === []) {
             yield new ChatEvent(ChatEvent::DELTA, ['block' => 0, 'text' => PromptBuilder::NOT_FOUND_ANSWER]);
+            $this->tracer->endTrace(PromptBuilder::NOT_FOUND_ANSWER, ['repondu' => false]);
             yield new ChatEvent(ChatEvent::DONE, $this->done(false, null, null, 0, 0));
 
             return;
@@ -65,6 +71,12 @@ final class ChatService
 
         $result = $generation->getReturn();
         $answered = $result->stopReason !== 'refusal' && !str_contains($answer, PromptBuilder::NOT_FOUND_ANSWER);
+        $this->tracer->endTrace($answer, [
+            'repondu' => $answered,
+            'modele' => $result->model,
+            'tokens_entree' => $result->inputTokens,
+            'tokens_sortie' => $result->outputTokens,
+        ]);
 
         yield new ChatEvent(ChatEvent::DONE, $this->done(
             $answered,

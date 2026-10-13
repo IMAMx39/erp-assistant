@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Agent;
 
+use App\Observability\LangfuseTracer;
 use App\Agent\Tool\AgentToolInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
@@ -23,6 +24,7 @@ final class ToolRegistry
         #[AutowireIterator(AgentToolInterface::class)]
         iterable                         $tools,
         private readonly LoggerInterface $logger,
+        private readonly LangfuseTracer $tracer,
     )
     {
         foreach ($tools as $tool) {
@@ -55,7 +57,7 @@ final class ToolRegistry
         }
 
         try {
-            return $tool->execute($arguments);
+            return $this->tracer->span('outil '.$name, $arguments, static fn (): array => $tool->execute($arguments));
         } catch (\Throwable $e) {
             $this->logger->error('Échec d\'un outil de l\'agent', ['outil' => $name, 'arguments' => $arguments, 'exception' => $e]);
 

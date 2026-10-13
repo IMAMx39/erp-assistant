@@ -8,7 +8,8 @@ final readonly class IngestDocument
 {
     public function __construct(
         public string $relativePath,
-        public bool $force = false,
-    ) {
+        public bool   $force = false,
+    )
+    {
     }
 }

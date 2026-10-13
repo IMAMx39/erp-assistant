@@ -12,8 +12,9 @@ final readonly class ParsedDocument
     public function __construct(
         public string $title,
         public string $module,
-        public array $tags,
+        public array  $tags,
         public string $body,
-    ) {
+    )
+    {
     }
 }

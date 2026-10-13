@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Chat\Generator;
 
+use App\Observability\LangfuseTracer;
 use App\Agent\Tool\AgentToolInterface;
 use App\Agent\ToolRegistry;
 use Psr\Log\LoggerInterface;
@@ -43,6 +44,7 @@ final class ChatCompletionsAnswerGenerator implements AnswerGeneratorInterface
         private readonly PromptBuilder $promptBuilder,
         private readonly ToolRegistry $tools,
         private readonly LoggerInterface $logger,
+        private readonly LangfuseTracer $tracer,
         private readonly string $provider,
         private readonly string $url,
         private readonly string $model,
@@ -73,9 +75,22 @@ final class ChatCompletionsAnswerGenerator implements AnswerGeneratorInterface
             for ($round = 1; ; ++$round) {
                 // Dernier tour autorisé : outils interdits, le modèle doit répondre.
                 $toolChoice = $tools === [] ? null : ($round > self::MAX_TOOL_ROUNDS ? 'none' : 'auto');
+                $usageBefore = $usage;
                 $turn = $this->round($messages, $tools, $toolChoice, $parser, $block, $sources, $usage);
                 yield from $turn;
-                ['text' => $text, 'toolCalls' => $toolCalls, 'stopReason' => $stopReason] = $turn->getReturn();
+                ['text' => $text, 'toolCalls' => $toolCalls, 'stopReason' => $stopReason, 'startTime' => $startTime, 'firstTokenTime' => $firstTokenTime] = $turn->getReturn();
+
+                $this->tracer->generation(
+                    sprintf('réponse (tour %d)', $round),
+                    $this->model,
+                    $messages,
+                    ['texte' => $text, 'appels_outils' => $toolCalls],
+                    $startTime,
+                    $firstTokenTime,
+                    $usage['input'] - $usageBefore['input'],
+                    $usage['output'] - $usageBefore['output'],
+                    ['fournisseur' => $this->provider, 'fin' => $stopReason],
+                );
 
                 if ($toolCalls === []) {
                     break;
@@ -131,7 +146,7 @@ final class ChatCompletionsAnswerGenerator implements AnswerGeneratorInterface
      * @param list<SearchResult>               $sources
      * @param array{input: int, output: int}   $usage    cumul des tokens, mis à jour
      *
-     * @return \Generator<int, ChatEvent, mixed, array{text: string, toolCalls: list<array{id: string, name: string, arguments: string}>, stopReason: ?string}>
+     * @return \Generator<int, ChatEvent, mixed, array{text: string, toolCalls: list<array{id: string, name: string, arguments: string}>, stopReason: ?string, startTime: string, firstTokenTime: ?string}>
      */
     private function round(array $messages, array $tools, ?string $toolChoice, CitationMarkerParser $parser, int &$block, array $sources, array &$usage): \Generator
     {
@@ -150,6 +165,8 @@ final class ChatCompletionsAnswerGenerator implements AnswerGeneratorInterface
             $body['stream_options'] = ['include_usage' => true];
         }
 
+        $startTime = LangfuseTracer::now();
+        $firstTokenTime = null;
         $response = $this->httpClient->request('POST', $this->url, [
             'auth_bearer' => $this->apiKey !== '' ? $this->apiKey : null,
             'headers' => ['Accept' => 'text/event-stream'],
@@ -194,6 +211,9 @@ final class ChatCompletionsAnswerGenerator implements AnswerGeneratorInterface
 
                 $content = $this->text($choice['delta']['content'] ?? '');
                 $text .= $content;
+                if ($content !== '' && $firstTokenTime === null) {
+                    $firstTokenTime = LangfuseTracer::now();
+                }
                 foreach ($parser->feed($content) as $token) {
                     yield from $this->events($token, $block, $sources);
                 }
@@ -218,7 +238,13 @@ final class ChatCompletionsAnswerGenerator implements AnswerGeneratorInterface
 
         ksort($toolCalls);
 
-        return ['text' => $text, 'toolCalls' => array_values($toolCalls), 'stopReason' => $stopReason];
+        return [
+            'text' => $text,
+            'toolCalls' => array_values($toolCalls),
+            'stopReason' => $stopReason,
+            'startTime' => $startTime,
+            'firstTokenTime' => $firstTokenTime,
+        ];
     }
 
     /**

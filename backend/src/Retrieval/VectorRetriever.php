@@ -12,12 +12,13 @@ use App\Retrieval\Dto\SearchResult;
 /**
  * Recherche sémantique : plus proches voisins de la question dans l'index vectoriel.
  */
-final class VectorRetriever
+final readonly class VectorRetriever
 {
     public function __construct(
-        private readonly EmbedderInterface $embedder,
-        private readonly ChunkRepository $chunkRepository,
-    ) {
+        private EmbedderInterface $embedder,
+        private ChunkRepository   $chunkRepository,
+    )
+    {
     }
 
     /**
@@ -34,7 +35,7 @@ final class VectorRetriever
         return array_map(static function (array $row): SearchResult {
             /** @var Chunk $chunk */
             $chunk = $row[0];
-            $distance = (float) $row['distance'];
+            $distance = (float)$row['distance'];
 
             return SearchResult::fromChunk($chunk, $distance, 1 - $distance);
         }, $rows);

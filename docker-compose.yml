@@ -23,6 +23,9 @@ x-php: &php
     OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-llama3.2:3b}
     RETRIEVAL_MODE: ${RETRIEVAL_MODE:-hybrid_rerank}
     RERANK_MODEL: ${RERANK_MODEL:-qwen/qwen3.8-27b}
+    LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-https://cloud.langfuse.com}
+    LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+    LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
   extra_hosts:
     - "host.docker.internal:host-gateway"
   depends_on:

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Retrieval;
 
+use App\Observability\LangfuseTracer;
 use App\Retrieval\Dto\SearchResult;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
@@ -21,12 +22,14 @@ final class DocumentRetriever
     private const RERANK_POOL = 10;
 
     public function __construct(
-        private readonly VectorRetriever $vectorRetriever,
+        private readonly VectorRetriever   $vectorRetriever,
         private readonly FulltextRetriever $fulltextRetriever,
-        private readonly LlmReranker $reranker,
+        private readonly LlmReranker       $reranker,
         #[Autowire('%env(RETRIEVAL_MODE)%')]
-        private readonly string $defaultMode,
-    ) {
+        private readonly string            $defaultMode,
+        private readonly LangfuseTracer $tracer,
+    )
+    {
     }
 
     /**
@@ -34,11 +37,30 @@ final class DocumentRetriever
      */
     public function search(string $query, int $limit = 5, ?RetrievalMode $mode = null): array
     {
-        return match ($mode ?? $this->defaultMode()) {
-            RetrievalMode::Vector => $this->vectorRetriever->search($query, $limit),
-            RetrievalMode::Hybrid => $this->hybrid($query, $limit),
-            RetrievalMode::HybridRerank => $this->reranker->rerank($query, $this->hybrid($query, self::RERANK_POOL), $limit),
-        };
+        $mode ??= $this->defaultMode();
+
+        return $this->tracer->span(
+            'recherche',
+            ['question' => $query, 'mode' => $mode->value, 'limite' => $limit],
+            fn (): array => match ($mode) {
+                RetrievalMode::Vector => $this->vectorRetriever->search($query, $limit),
+                RetrievalMode::Hybrid => $this->hybrid($query, $limit),
+                RetrievalMode::HybridRerank => $this->reranker->rerank($query, $this->hybrid($query, self::RERANK_POOL), $limit),
+            },
+            self::describe(...),
+        );
+    }
+
+    /**
+     * Résumé lisible d'une liste de résultats pour les traces.
+     *
+     * @param list<SearchResult> $results
+     *
+     * @return list<string>
+     */
+    private static function describe(array $results): array
+    {
+        return array_map(static fn (SearchResult $r): string => sprintf('%.4f  %s', $r->score, $r->heading), $results);
     }
 
     public function defaultMode(): RetrievalMode
@@ -61,8 +83,8 @@ final class DocumentRetriever
         $scores = [];
 
         $rankings = [
-            $this->vectorRetriever->search($query, self::CANDIDATES),
-            $this->fulltextRetriever->search($query, self::CANDIDATES),
+            $this->tracer->span('vecteurs', $query, fn (): array => $this->vectorRetriever->search($query, self::CANDIDATES), self::describe(...)),
+            $this->tracer->span('plein texte', $query, fn (): array => $this->fulltextRetriever->search($query, self::CANDIDATES), self::describe(...)),
         ];
 
         foreach ($rankings as $ranking) {

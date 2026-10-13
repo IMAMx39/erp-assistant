@@ -17,11 +17,12 @@ final class SearchController extends AbstractController
 
     #[Route('/api/search', name: 'api_search', methods: ['GET'])]
     public function __invoke(
-        DocumentRetriever $retriever,
-        #[MapQueryParameter] string $q = '',
-        #[MapQueryParameter] int $limit = 5,
+        DocumentRetriever            $retriever,
+        #[MapQueryParameter] string  $q = '',
+        #[MapQueryParameter] int     $limit = 5,
         #[MapQueryParameter] ?string $mode = null,
-    ): JsonResponse {
+    ): JsonResponse
+    {
         $query = trim($q);
 
         if ($query === '') {

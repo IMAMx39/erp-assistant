@@ -22,8 +22,9 @@ final class RestockService
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly StockService $stockService,
-    ) {
+        private readonly StockService           $stockService,
+    )
+    {
     }
 
     /**
@@ -45,7 +46,7 @@ final class RestockService
             $target = $rule->getMaximum() ?? 2 * $rule->getMinimum();
             $quantity = max(0, $target - ($available + $incoming));
             $factor = max(1, $article->getConversionFactor());
-            $quantity = (int) (ceil($quantity / $factor) * $factor);
+            $quantity = (int)(ceil($quantity / $factor) * $factor);
             $supplier = $article->getMainSupplier();
 
             $suggestions[] = [
@@ -57,9 +58,7 @@ final class RestockService
                 'stock_maximum' => $rule->getMaximum(),
                 'en_commande_non_recue' => $incoming,
                 'quantite_suggeree' => $quantity,
-                'unite' => $article->getStockUnit(),
-                // Ex. 144 paires = 12 « carton de 12 » : la quantité est en unités de stock.
-                'soit_en_unites_achat' => $article->getPurchaseUnit() === null ? null : sprintf('%d × %s', intdiv($quantity, $factor), $article->getPurchaseUnit()),
+                'unite_achat' => $article->getPurchaseUnit() ?? $article->getStockUnit(),
                 'fournisseur_principal' => $supplier?->getCode(),
                 'remarque' => $supplier === null
                     ? 'Aucun fournisseur principal : à traiter manuellement'
@@ -67,7 +66,7 @@ final class RestockService
             ];
         }
 
-        usort($suggestions, static fn (array $a, array $b): int => [$a['entrepot'], $a['article']] <=> [$b['entrepot'], $b['article']]);
+        usort($suggestions, static fn(array $a, array $b): int => [$a['entrepot'], $a['article']] <=> [$b['entrepot'], $b['article']]);
 
         return $suggestions;
     }
@@ -87,6 +86,6 @@ final class RestockService
             ->getQuery()
             ->getResult();
 
-        return array_sum(array_map(static fn (PurchaseOrderLine $line): int => $line->getRemainingQuantity(), $lines));
+        return array_sum(array_map(static fn(PurchaseOrderLine $line): int => $line->getRemainingQuantity(), $lines));
     }
 }

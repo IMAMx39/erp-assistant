@@ -18,23 +18,24 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\Exception\UnrecoverableMessageHandlingException;
 
 #[AsMessageHandler]
-final class IngestDocumentHandler
+final readonly class IngestDocumentHandler
 {
     public function __construct(
-        private readonly MarkdownParser $parser,
-        private readonly MarkdownChunker $chunker,
-        private readonly EmbedderInterface $embedder,
-        private readonly DocumentRepository $documentRepository,
-        private readonly EntityManagerInterface $entityManager,
-        private readonly LoggerInterface $logger,
+        private MarkdownParser         $parser,
+        private MarkdownChunker        $chunker,
+        private EmbedderInterface      $embedder,
+        private DocumentRepository     $documentRepository,
+        private EntityManagerInterface $entityManager,
+        private LoggerInterface        $logger,
         #[Autowire('%env(CORPUS_DIR)%')]
-        private readonly string $corpusDir,
-    ) {
+        private string                 $corpusDir,
+    )
+    {
     }
 
     public function __invoke(IngestDocument $message): void
     {
-        $file = rtrim($this->corpusDir, '/').'/'.$message->relativePath;
+        $file = rtrim($this->corpusDir, '/') . '/' . $message->relativePath;
         $raw = is_file($file) ? file_get_contents($file) : false;
 
         if ($raw === false) {
@@ -56,7 +57,7 @@ final class IngestDocumentHandler
         // Calculés avant toute modification : si Ollama échoue, le message est rejoué
         // et le document en base reste dans son état précédent.
         $embeddings = $this->embedder->embedDocuments(array_map(
-            static fn (ChunkData $chunk): string => $chunk->heading."\n\n".$chunk->content,
+            static fn(ChunkData $chunk): string => $chunk->heading . "\n\n" . $chunk->content,
             $chunks,
         ));
 

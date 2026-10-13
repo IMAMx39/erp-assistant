@@ -32,9 +32,10 @@ final class FulltextRetriever
     ];
 
     public function __construct(
-        private readonly Connection $connection,
+        private readonly Connection      $connection,
         private readonly ChunkRepository $chunkRepository,
-    ) {
+    )
+    {
     }
 
     /**
@@ -53,19 +54,19 @@ final class FulltextRetriever
              FROM chunk
              WHERE MATCH(heading, content) AGAINST(:query IN NATURAL LANGUAGE MODE)
              ORDER BY score DESC
-             LIMIT '.max(1, $limit),
+             LIMIT ' . max(1, $limit),
             ['query' => $query],
         );
 
         $scores = [];
         foreach ($rows as $row) {
-            $scores[(int) $row['id']] = (float) $row['score'];
+            $scores[(int)$row['id']] = (float)$row['score'];
         }
 
         $chunks = $this->chunkRepository->findWithDocuments(array_keys($scores));
 
         return array_map(
-            static fn ($chunk): SearchResult => SearchResult::fromChunk($chunk, null, $scores[(int) $chunk->getId()]),
+            static fn($chunk): SearchResult => SearchResult::fromChunk($chunk, null, $scores[(int)$chunk->getId()]),
             $chunks,
         );
     }
@@ -79,7 +80,7 @@ final class FulltextRetriever
 
         return implode(' ', array_filter(
             $words,
-            static fn (string $word): bool => mb_strlen($word) >= 3 && !\in_array($word, self::STOPWORDS, true),
+            static fn(string $word): bool => mb_strlen($word) >= 3 && !\in_array($word, self::STOPWORDS, true),
         ));
     }
 }

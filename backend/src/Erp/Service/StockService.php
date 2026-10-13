@@ -17,11 +17,12 @@ use Doctrine\ORM\EntityManagerInterface;
  * stock disponible = stock physique (statut disponible) − stock réservé par les commandes clients
  * validées non expédiées. Le stock en litige ou en transit n'est disponible nulle part.
  */
-final class StockService
+final readonly class StockService
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
-    ) {
+        private EntityManagerInterface $entityManager,
+    )
+    {
     }
 
     /**
@@ -100,14 +101,14 @@ final class StockService
             ->where('line.article = :article')
             ->andWhere('o.status IN (:statuses)')
             ->setParameter('article', $article)
-            ->setParameter('statuses', array_filter(CustomerOrderStatus::cases(), static fn (CustomerOrderStatus $s): bool => $s->reservesStock()))
+            ->setParameter('statuses', array_filter(CustomerOrderStatus::cases(), static fn(CustomerOrderStatus $s): bool => $s->reservesStock()))
             ->groupBy('w.code')
             ->getQuery()
             ->getArrayResult();
 
         $reserved = [];
         foreach ($rows as $row) {
-            $reserved[$row['code']] = (int) $row['reserved'];
+            $reserved[$row['code']] = (int)$row['reserved'];
         }
 
         return $reserved;

@@ -18,6 +18,9 @@ parameters:
     env(OLLAMA_CHAT_MODEL): 'llama3.2:3b'
     env(RETRIEVAL_MODE): 'hybrid_rerank'
     env(RERANK_MODEL): 'qwen/qwen3.8-27b'
+    env(LANGFUSE_BASE_URL): 'https://cloud.langfuse.com'
+    env(LANGFUSE_PUBLIC_KEY): ''
+    env(LANGFUSE_SECRET_KEY): ''
 
 services:
     # default configuration for services in *this* file

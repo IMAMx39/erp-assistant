@@ -59,6 +59,7 @@ backend/src/
 ├── Agent/           # ToolRegistry ; Tool/ : 7 outils en lecture seule (get_article, search_articles, get_stock, get_customer, get_customer_order, get_purchase_order, restock_suggestions)
 ├── Erp/             # ERP fictif (tables erp_*) : Entity/, Enum/ (statuts avec libellés du corpus), Service/ (stock disponible, encours, réapprovisionnement)
 ├── DataFixtures/    # ErpFixtures : données écrites à la main, reproductibles (make fixtures)
+├── Observability/   # LangfuseTracer (inactif sans clés, envoi après la réponse), FlushTracesListener
 └── Mcp/             # serveur MCP (symfony/mcp-bundle) : ErpToolLoader expose les outils de l'agent + search_documentation, en stdio
 ```
 
@@ -103,7 +104,7 @@ Autres dossiers : `corpus/` (documentation Markdown), `evals/` (promptfoo), `fro
 - [x] **J8** — ERP fictif (entités + fixtures cohérentes avec le corpus), outils de l'agent, tool calling (`evals/results/j8-agent.md`) : 15 questions sur les données, bon outil et valeurs exactes 14/14 après corrections (gpt-oss-120b). Agent Claude vérifié hors ligne seulement.
 - [ ] **J9** — Serveur MCP (testé dans Claude Desktop), traces Langfuse (compose séparé). Sacrifiable si retard.
   - [x] Serveur MCP : 8 outils en lecture seule (7 de l'agent + `search_documentation`), stdio, **testé dans Claude Desktop**.
-  - [ ] Traces Langfuse : à décider (Langfuse Cloud ou abandon).
+  - [x] Traces Langfuse (Langfuse Cloud, API d'ingestion, sans dépendance) : une trace par question (recherche et sous-étapes, appels LLM avec tokens et temps jusqu'au premier mot, outils) et une par appel MCP. Vérifié contre un faux point d'ingestion ; **reste à brancher les clés**.
 - [ ] **J10** — CI GitHub Actions avec évaluation automatique, déploiement sur le serveur AWS, README (schéma d'architecture + résultats chiffrés).
 
 Hors périmètre pour l'instant : multi-tenant.
@@ -131,3 +132,4 @@ Hors périmètre pour l'instant : multi-tenant.
 - En mode non-debug (`new Kernel('dev', false)`), Symfony réutilise un conteneur compilé ancien : utiliser le mode debug dans les scripts de test.
 - `docker compose run evals` redémarre ses dépendances (nginx, php) si leur configuration diffère : les cibles d'évaluation utilisent `--no-deps` (la pile doit déjà tourner, `make up`).
 - Serveur MCP : la sortie standard doit rester du JSON-RPC pur (les logs Symfony vont sur la sortie d'erreur). Lancer `mcp:server` sans `--no-debug` (sinon conteneur compilé périmé). Claude Desktop n'hérite pas du PATH du terminal : chemin absolu de `docker` dans sa configuration.
+- Langfuse : les traces partent en un lot à `kernel.terminate` (après la réponse) ; le serveur MCP, processus permanent, envoie une trace par appel. Une panne de Langfuse est journalisée, jamais bloquante.
