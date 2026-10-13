@@ -9,12 +9,13 @@ use App\Erp\Enum\CustomerOrderStatus;
 use App\Erp\Service\CustomerAccountService;
 use Doctrine\ORM\EntityManagerInterface;
 
-final class GetCustomerOrderTool implements AgentToolInterface
+final readonly class GetCustomerOrderTool implements AgentToolInterface
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
-        private readonly CustomerAccountService $accountService,
-    ) {
+        private EntityManagerInterface $entityManager,
+        private CustomerAccountService $accountService,
+    )
+    {
     }
 
     public function name(): string
@@ -25,8 +26,8 @@ final class GetCustomerOrderTool implements AgentToolInterface
     public function description(): string
     {
         return "Détail d'une commande client à partir de son numéro (CC-xxxxx) : statut, client, entrepôt, montant HT, lignes "
-            .'(quantités commandées, réservées, en reliquat, expédiées) et, si elle est bloquée, les motifs du blocage '
-            ."(plafond d'encours dépassé, relance de niveau 3).";
+            . '(quantités commandées, réservées, en reliquat, expédiées) et, si elle est bloquée, les motifs du blocage '
+            . "(plafond d'encours dépassé, relance de niveau 3).";
     }
 
     public function parameters(): array
@@ -55,11 +56,11 @@ final class GetCustomerOrderTool implements AgentToolInterface
             'entrepot' => $order->getWarehouse()->getCode(),
             'date' => $order->getOrderedAt()->format('Y-m-d'),
             'montant_ht' => $order->getTotalExcludingTax(),
-            'lignes' => array_map(static fn ($line): array => [
+            'lignes' => array_map(static fn($line): array => [
                 'article' => $line->getArticle()->getCode(),
                 'libelle' => $line->getArticle()->getLabel(),
                 'quantite' => $line->getQuantity(),
-                'prix_unitaire_ht' => (float) $line->getUnitPrice(),
+                'prix_unitaire_ht' => (float)$line->getUnitPrice(),
                 'reservee' => $line->getReservedQuantity(),
                 'en_reliquat' => $order->getStatus()->reservesStock() ? $line->getBackorderQuantity() : 0,
                 'expediee' => $line->getShippedQuantity(),

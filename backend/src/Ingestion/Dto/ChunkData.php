@@ -7,9 +7,10 @@ namespace App\Ingestion\Dto;
 final readonly class ChunkData
 {
     public function __construct(
-        public int $position,
+        public int    $position,
         public string $heading,
         public string $content,
-    ) {
+    )
+    {
     }
 }

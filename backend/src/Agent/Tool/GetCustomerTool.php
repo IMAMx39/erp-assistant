@@ -8,12 +8,13 @@ use App\Erp\Entity\Customer;
 use App\Erp\Service\CustomerAccountService;
 use Doctrine\ORM\EntityManagerInterface;
 
-final class GetCustomerTool implements AgentToolInterface
+final readonly class GetCustomerTool implements AgentToolInterface
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
-        private readonly CustomerAccountService $accountService,
-    ) {
+        private EntityManagerInterface $entityManager,
+        private CustomerAccountService $accountService,
+    )
+    {
     }
 
     public function name(): string
@@ -24,8 +25,8 @@ final class GetCustomerTool implements AgentToolInterface
     public function description(): string
     {
         return "Situation d'un client à partir de son code (CLI-xxxxx) ou d'une partie de son nom : plafond d'encours, encours "
-            .'(factures non réglées + commandes non facturées), factures non réglées avec retard et niveau de relance, '
-            .'motifs de blocage des commandes, pays et numéro de TVA intracommunautaire.';
+            . '(factures non réglées + commandes non facturées), factures non réglées avec retard et niveau de relance, '
+            . 'motifs de blocage des commandes, pays et numéro de TVA intracommunautaire.';
     }
 
     public function parameters(): array
@@ -53,13 +54,13 @@ final class GetCustomerTool implements AgentToolInterface
             /** @var list<Customer> $matches */
             $matches = $repository->createQueryBuilder('c')
                 ->where('c.name LIKE :name')
-                ->setParameter('name', '%'.$search.'%')
+                ->setParameter('name', '%' . $search . '%')
                 ->getQuery()
                 ->getResult();
 
             if (\count($matches) > 1) {
                 return ['erreur' => 'Plusieurs clients correspondent, précisez le code.', 'clients' => array_map(
-                    static fn (Customer $c): array => ['client' => $c->getCode(), 'nom' => $c->getName()],
+                    static fn(Customer $c): array => ['client' => $c->getCode(), 'nom' => $c->getName()],
                     $matches,
                 )];
             }

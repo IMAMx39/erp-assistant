@@ -2,4 +2,5 @@
 /results/*
 !/results/baseline.md
 !/results/j7-recherche.md
+!/results/j8-agent.md
 /.promptfoo/

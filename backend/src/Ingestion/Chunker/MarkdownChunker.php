@@ -11,11 +11,12 @@ use App\Ingestion\Dto\ParsedDocument;
  * Découpe un document par section de niveau 2 (##).
  * Une section trop longue est redécoupée par paragraphes.
  */
-final class MarkdownChunker
+final readonly class MarkdownChunker
 {
     public function __construct(
-        private readonly int $maxChars = 1500,
-    ) {
+        private int $maxChars = 1500,
+    )
+    {
     }
 
     /**
@@ -26,7 +27,7 @@ final class MarkdownChunker
         $chunks = [];
 
         foreach ($this->splitSections($document->body) as [$heading, $content]) {
-            $headingPath = $heading === null ? $document->title : $document->title.' > '.$heading;
+            $headingPath = $heading === null ? $document->title : $document->title . ' > ' . $heading;
 
             foreach ($this->splitBySize($content) as $part) {
                 $chunks[] = new ChunkData(\count($chunks), $headingPath, $part);
@@ -72,7 +73,7 @@ final class MarkdownChunker
 
         return array_values(array_filter(
             $sections,
-            static fn (array $section): bool => $section[1] !== '',
+            static fn(array $section): bool => $section[1] !== '',
         ));
     }
 
@@ -94,7 +95,7 @@ final class MarkdownChunker
                 $current = '';
             }
 
-            $current = $current === '' ? $paragraph : $current."\n\n".$paragraph;
+            $current = $current === '' ? $paragraph : $current . "\n\n" . $paragraph;
         }
 
         if ($current !== '') {

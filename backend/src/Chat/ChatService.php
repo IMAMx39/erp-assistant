@@ -23,12 +23,13 @@ final class ChatService
     private const RETRIEVAL_LIMIT = 5;
 
     public function __construct(
-        private readonly DocumentRetriever $retriever,
+        private readonly DocumentRetriever  $retriever,
         #[AutowireLocator(AnswerGeneratorInterface::class, indexAttribute: 'key')]
         private readonly ContainerInterface $generators,
         #[Autowire('%env(LLM_PROVIDER)%')]
-        private readonly string $provider,
-    ) {
+        private readonly string             $provider,
+    )
+    {
     }
 
     /**

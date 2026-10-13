@@ -8,12 +8,13 @@ use App\Erp\Entity\Warehouse;
 use App\Erp\Service\RestockService;
 use Doctrine\ORM\EntityManagerInterface;
 
-final class RestockSuggestionsTool implements AgentToolInterface
+final readonly class RestockSuggestionsTool implements AgentToolInterface
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
-        private readonly RestockService $restockService,
-    ) {
+        private EntityManagerInterface $entityManager,
+        private RestockService         $restockService,
+    )
+    {
     }
 
     public function name(): string
@@ -24,8 +25,8 @@ final class RestockSuggestionsTool implements AgentToolInterface
     public function description(): string
     {
         return 'Articles dont le stock disponible est passé sous le stock minimum, avec la quantité de réapprovisionnement '
-            .'suggérée (stock maximum − (disponible + commandé non reçu), arrondie à l\'unité d\'achat) et le fournisseur principal. '
-            .'Filtrable par entrepôt (ORL ou LYO).';
+            . 'suggérée (stock maximum − (disponible + commandé non reçu), arrondie à l\'unité d\'achat) et le fournisseur principal. '
+            . 'Filtrable par entrepôt (ORL ou LYO).';
     }
 
     public function parameters(): array
@@ -33,7 +34,7 @@ final class RestockSuggestionsTool implements AgentToolInterface
         return [
             'type' => 'object',
             'properties' => [
-                'warehouse' => ['type' => 'string', 'enum' => ['ORL', 'LYO'], 'description' => 'Entrepôt (facultatif : tous par défaut)'],
+                'warehouse' => ['type' => ['string', 'null'], 'enum' => ['ORL', 'LYO', null], 'description' => 'Entrepôt (facultatif : tous par défaut)'],
             ],
         ];
     }

@@ -17,18 +17,19 @@ class PurchaseOrderLine
     public function __construct(
         #[ORM\ManyToOne(inversedBy: 'lines')]
         #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-        private PurchaseOrder $order,
+        private readonly PurchaseOrder $order,
         #[ORM\ManyToOne]
         #[ORM\JoinColumn(nullable: false)]
-        private Article $article,
+        private readonly Article       $article,
         /** Quantité commandée, en unités de stock */
         #[ORM\Column]
-        private int $quantity,
+        private readonly int           $quantity,
         #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2)]
-        private string $unitPrice,
+        private readonly string        $unitPrice,
         #[ORM\Column]
-        private int $receivedQuantity = 0,
-    ) {
+        private readonly int           $receivedQuantity = 0,
+    )
+    {
     }
 
     /**

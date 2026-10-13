@@ -17,23 +17,23 @@ class Invoice
     public function __construct(
         /** FA- + numéro chronologique */
         #[ORM\Column(length: 12, unique: true)]
-        private string $number,
+        private readonly string             $number,
         #[ORM\ManyToOne]
         #[ORM\JoinColumn(nullable: false)]
-        private Customer $customer,
+        private readonly Customer           $customer,
         #[ORM\Column]
-        private \DateTimeImmutable $issuedAt,
+        private readonly \DateTimeImmutable $issuedAt,
         #[ORM\Column]
-        private \DateTimeImmutable $dueAt,
+        private readonly \DateTimeImmutable $dueAt,
         #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2)]
-        private string $amountIncludingTax,
+        private readonly string    $amountIncludingTax,
         #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2)]
-        private string $paidAmount = '0.00',
+        private readonly string             $paidAmount = '0.00',
         /** 0 à 3 (corpus : facturation/relances.md) ; 3 = mise en demeure et blocage des commandes */
         #[ORM\Column]
-        private int $reminderLevel = 0,
+        private readonly int                $reminderLevel = 0,
         #[ORM\ManyToOne]
-        private ?CustomerOrder $customerOrder = null,
+        private readonly ?CustomerOrder     $customerOrder = null,
     ) {
     }
 

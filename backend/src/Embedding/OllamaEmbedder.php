@@ -22,11 +22,12 @@ final class OllamaEmbedder implements EmbedderInterface
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         #[Autowire('%env(OLLAMA_URL)%')]
-        private readonly string $ollamaUrl,
+        private readonly string              $ollamaUrl,
         #[Autowire('%env(OLLAMA_EMBED_MODEL)%')]
-        private readonly string $model,
-        private readonly int $dimension = Chunk::EMBEDDING_DIMENSION,
-    ) {
+        private readonly string              $model,
+        private readonly int                 $dimension = Chunk::EMBEDDING_DIMENSION,
+    )
+    {
     }
 
     public function embedDocuments(array $texts): array
@@ -36,14 +37,14 @@ final class OllamaEmbedder implements EmbedderInterface
         }
 
         return $this->embed(array_map(
-            static fn (string $text): string => self::DOCUMENT_PREFIX.$text,
+            static fn(string $text): string => self::DOCUMENT_PREFIX . $text,
             $texts,
         ));
     }
 
     public function embedQuery(string $query): array
     {
-        return $this->embed([self::QUERY_PREFIX.$query])[0];
+        return $this->embed([self::QUERY_PREFIX . $query])[0];
     }
 
     /**
@@ -53,7 +54,7 @@ final class OllamaEmbedder implements EmbedderInterface
      */
     private function embed(array $inputs): array
     {
-        $response = $this->httpClient->request('POST', rtrim($this->ollamaUrl, '/').'/api/embed', [
+        $response = $this->httpClient->request('POST', rtrim($this->ollamaUrl, '/') . '/api/embed', [
             'json' => ['model' => $this->model, 'input' => $inputs],
             'timeout' => 60,
         ]);

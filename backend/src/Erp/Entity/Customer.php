@@ -17,22 +17,23 @@ class Customer
     public function __construct(
         /** CLI- + 5 chiffres */
         #[ORM\Column(length: 9, unique: true)]
-        private string $code,
+        private readonly string  $code,
         #[ORM\Column(length: 100)]
-        private string $name,
+        private readonly string  $name,
         /** Code pays ISO (FR, DE, CH…) */
         #[ORM\Column(length: 2)]
-        private string $country,
+        private readonly string  $country,
         /** Plafond d'encours : factures non réglées + commandes non facturées (corpus : ventes/commande-client.md) */
         #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2)]
-        private string $creditLimit,
+        private readonly string  $creditLimit,
         /** Numéro de TVA intracommunautaire (clients professionnels de l'UE) */
         #[ORM\Column(length: 20, nullable: true)]
-        private ?string $vatNumber = null,
+        private readonly ?string $vatNumber = null,
         /** Facturation « livraison » (une facture par BL) ou « mensuelle » */
         #[ORM\Column(length: 20)]
-        private string $invoicingMode = 'livraison',
-    ) {
+        private readonly string  $invoicingMode = 'livraison',
+    )
+    {
     }
 
     public function getId(): ?int

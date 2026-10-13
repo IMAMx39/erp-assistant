@@ -16,12 +16,13 @@ class Supplier
     public function __construct(
         /** FRN- + 4 chiffres */
         #[ORM\Column(length: 8, unique: true)]
-        private string $code,
+        private readonly string $code,
         #[ORM\Column(length: 100)]
-        private string $name,
+        private readonly string $name,
         #[ORM\Column(length: 150)]
-        private string $purchasingEmail,
-    ) {
+        private readonly string $purchasingEmail,
+    )
+    {
     }
 
     public function getId(): ?int

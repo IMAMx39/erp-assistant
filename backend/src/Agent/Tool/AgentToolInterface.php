@@ -19,7 +19,8 @@ interface AgentToolInterface
     public function description(): string;
 
     /**
-     * Schéma JSON des paramètres.
+     * Schéma JSON des paramètres. Les paramètres facultatifs acceptent null : certains modèles l'envoient
+     * et Groq rejette tout appel qui ne respecte pas le schéma.
      *
      * @return array<string, mixed>
      */

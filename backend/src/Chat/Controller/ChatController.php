@@ -18,9 +18,10 @@ use Symfony\Contracts\HttpClient\Exception\ExceptionInterface as HttpClientExcep
 final class ChatController extends AbstractController
 {
     public function __construct(
-        private readonly ChatService $chatService,
+        private readonly ChatService     $chatService,
         private readonly LoggerInterface $logger,
-    ) {
+    )
+    {
     }
 
     #[Route('/api/chat', name: 'api_chat', methods: ['POST'])]
@@ -61,8 +62,8 @@ final class ChatController extends AbstractController
 
     private function sendEvent(string $type, mixed $data): void
     {
-        echo 'event: '.$type."\n";
-        echo 'data: '.json_encode($data, \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES | \JSON_THROW_ON_ERROR)."\n\n";
+        echo 'event: ' . $type . "\n";
+        echo 'data: ' . json_encode($data, \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES | \JSON_THROW_ON_ERROR) . "\n\n";
 
         if (ob_get_level() > 0) {
             ob_flush();

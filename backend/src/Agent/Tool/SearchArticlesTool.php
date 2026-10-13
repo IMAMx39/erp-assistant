@@ -34,8 +34,8 @@ final class SearchArticlesTool implements AgentToolInterface
         return [
             'type' => 'object',
             'properties' => [
-                'query' => ['type' => 'string', 'description' => 'Mots du libellé recherchés'],
-                'family' => ['type' => 'string', 'description' => "Famille d'articles (facultatif)"],
+                'query' => ['type' => ['string', 'null'], 'description' => 'Mots du libellé recherchés'],
+                'family' => ['type' => ['string', 'null'], 'description' => "Famille d'articles (facultatif)"],
             ],
         ];
     }
@@ -49,8 +49,18 @@ final class SearchArticlesTool implements AgentToolInterface
             return ['erreur' => 'Indiquez des mots du libellé ou une famille.'];
         }
 
+        $articles = $this->articleRepository->search($query, $family, self::LIMIT);
+        $note = null;
+        // Famille mal devinée par le modèle (ex. « gants » cherchés en Manutention) : on élargit.
+        if ($articles === [] && $family !== null && trim($query) !== '') {
+            $articles = $this->articleRepository->search($query, null, self::LIMIT);
+            if ($articles !== []) {
+                $note = sprintf('Aucun résultat dans la famille « %s » : résultats toutes familles confondues.', $family);
+            }
+        }
+
         $results = [];
-        foreach ($this->articleRepository->search($query, $family, self::LIMIT) as $article) {
+        foreach ($articles as $article) {
             $results[] = [
                 'article' => $article->getCode(),
                 'libelle' => $article->getLabel(),
@@ -63,6 +73,9 @@ final class SearchArticlesTool implements AgentToolInterface
             ];
         }
 
-        return ['nombre' => \count($results), 'articles' => $results];
+        return array_filter(
+            ['nombre' => \count($results), 'remarque' => $note, 'articles' => $results],
+            static fn (mixed $value): bool => $value !== null,
+        );
     }
 }

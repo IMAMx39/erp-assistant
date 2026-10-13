@@ -25,9 +25,9 @@ final class PromptBuilder
             : 'Cite les passages qui justifient ta réponse.';
         $toolRule = $tools
             ? "\nTu disposes aussi d'outils en lecture seule sur les données de l'ERP de Distrilog (articles, stocks, clients, commandes, factures). "
-                .'Utilise-les pour toute question sur une donnée précise : un code ART-, CC-, CF-, CLI-, un stock, un client, une commande. '
-                .'Les données des outils ne se citent pas (pas de crochets ni de nom d\'outil) ; continue de citer par leur numéro les extraits de documentation que tu utilises. '
-                .'Ne réponds « '.$notFound.' » que si ni la documentation ni les outils ne permettent de répondre.'
+            . 'Utilise-les pour toute question sur une donnée précise : un code ART-, CC-, CF-, CLI-, un stock, un client, une commande. '
+            . 'Les données des outils ne se citent pas (pas de crochets ni de nom d\'outil) ; continue de citer par leur numéro les extraits de documentation que tu utilises. '
+            . 'Ne réponds « ' . $notFound . ' » que si ni la documentation ni les outils ne permettent de répondre.'
             : '';
         $basis = $tools ? 'les extraits de documentation fournis et les données des outils' : 'les extraits de documentation fournis';
 
@@ -51,7 +51,7 @@ final class PromptBuilder
      */
     public function documentMessages(string $question, array $sources): array
     {
-        $content = array_map(static fn (SearchResult $source): array => [
+        $content = array_map(static fn(SearchResult $source): array => [
             'type' => 'document',
             'source' => ['type' => 'text', 'mediaType' => 'text/plain', 'data' => $source->content],
             'title' => $source->heading,
@@ -82,6 +82,6 @@ final class PromptBuilder
             );
         }
 
-        return "Extraits de documentation :\n\n".implode("\n\n", $extracts)."\n\nQuestion : ".$question;
+        return "Extraits de documentation :\n\n" . implode("\n\n", $extracts) . "\n\nQuestion : " . $question;
     }
 }

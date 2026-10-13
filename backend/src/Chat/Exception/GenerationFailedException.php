@@ -10,10 +10,11 @@ namespace App\Chat\Exception;
 final class GenerationFailedException extends \RuntimeException
 {
     public function __construct(
-        string $message,
+        string              $message,
         public readonly int $statusCode = 502,
-        ?\Throwable $previous = null,
-    ) {
+        ?\Throwable         $previous = null,
+    )
+    {
         parent::__construct($message, 0, $previous);
     }
 }

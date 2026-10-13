@@ -30,11 +30,11 @@ class ArticleRepository extends ServiceEntityRepository
         $words = preg_split('/\s+/', trim($query), flags: \PREG_SPLIT_NO_EMPTY) ?: [];
         foreach ($words as $i => $word) {
             $qb->andWhere("a.label LIKE :w{$i} OR a.family LIKE :w{$i} OR a.code LIKE :w{$i}")
-                ->setParameter("w{$i}", '%'.$word.'%');
+                ->setParameter("w{$i}", '%' . $word . '%');
         }
 
         if ($family !== null && $family !== '') {
-            $qb->andWhere('a.family LIKE :family')->setParameter('family', '%'.$family.'%');
+            $qb->andWhere('a.family LIKE :family')->setParameter('family', '%' . $family . '%');
         }
 
         /** @var list<Article> */

@@ -21,15 +21,16 @@ class StockRule
     public function __construct(
         #[ORM\ManyToOne]
         #[ORM\JoinColumn(nullable: false)]
-        private Article $article,
+        private readonly Article   $article,
         #[ORM\ManyToOne]
         #[ORM\JoinColumn(nullable: false)]
-        private Warehouse $warehouse,
+        private readonly Warehouse $warehouse,
         #[ORM\Column]
-        private int $minimum,
+        private readonly int       $minimum,
         #[ORM\Column(nullable: true)]
-        private ?int $maximum = null,
-    ) {
+        private readonly ?int      $maximum = null,
+    )
+    {
     }
 
     public function getId(): ?int

@@ -19,28 +19,29 @@ class Article
     public function __construct(
         /** ART- + 5 chiffres */
         #[ORM\Column(length: 9, unique: true)]
-        private string $code,
+        private readonly string        $code,
         #[ORM\Column(length: 80)]
-        private string $label,
+        private readonly string        $label,
         #[ORM\Column(length: 50)]
-        private string $family,
+        private readonly string        $family,
         /** Unité dans laquelle le stock est compté */
         #[ORM\Column(length: 20)]
-        private string $stockUnit,
+        private readonly string        $stockUnit,
         #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2)]
-        private string $salePrice,
+        private readonly string        $salePrice,
         #[ORM\ManyToOne]
-        private ?Supplier $mainSupplier = null,
+        private readonly ?Supplier     $mainSupplier = null,
         /** Unité d'achat (ex. carton de 12) et nombre d'unités de stock qu'elle contient */
         #[ORM\Column(length: 20, nullable: true)]
-        private ?string $purchaseUnit = null,
+        private readonly ?string       $purchaseUnit = null,
         #[ORM\Column]
-        private int $conversionFactor = 1,
+        private readonly int           $conversionFactor = 1,
         #[ORM\Column(type: Types::DECIMAL, precision: 4, scale: 1)]
-        private string $vatRate = '20.0',
+        private readonly string        $vatRate = '20.0',
         #[ORM\Column(length: 20, enumType: ArticleStatus::class)]
-        private ArticleStatus $status = ArticleStatus::Active,
-    ) {
+        private readonly ArticleStatus $status = ArticleStatus::Active,
+    )
+    {
     }
 
     public function getId(): ?int

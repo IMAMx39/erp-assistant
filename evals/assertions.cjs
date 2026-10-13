@@ -9,7 +9,7 @@ function response(output) {
   return typeof output === "string" ? JSON.parse(output) : output;
 }
 
-/** Minuscules, sans accents, espaces normalisées : « 5 000 » = « 5000 », « 10 % » = « 10% ». */
+/** Minuscules, sans accents, espaces et tirets normalisés : « 5 000 » = « 5000 », « 10 % » = « 10% ». */
 function normalize(text) {
   return String(text)
     .normalize("NFD")
@@ -17,6 +17,8 @@ function normalize(text) {
     .toLowerCase()
     .replace(/[   ]/g, " ")
     .replace(/[’‘]/g, "'")
+    // Certains modèles écrivent les codes avec un tiret insécable (ART‑30205).
+    .replace(/[\u2010-\u2015\u2212]/g, "-")
     .replace(/\s+/g, " ")
     .replace(/(\d) (?=\d)/g, "$1")
     .replace(/ %/g, "%");

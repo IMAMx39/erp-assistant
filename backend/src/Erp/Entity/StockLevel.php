@@ -20,15 +20,16 @@ class StockLevel
     public function __construct(
         #[ORM\ManyToOne]
         #[ORM\JoinColumn(nullable: false)]
-        private Article $article,
+        private readonly Article     $article,
         #[ORM\ManyToOne]
         #[ORM\JoinColumn(nullable: false)]
-        private Location $location,
+        private readonly Location    $location,
         #[ORM\Column]
-        private int $quantity,
+        private readonly int         $quantity,
         #[ORM\Column(length: 20, enumType: StockStatus::class)]
-        private StockStatus $status = StockStatus::Available,
-    ) {
+        private readonly StockStatus $status = StockStatus::Available,
+    )
+    {
     }
 
     public function getId(): ?int

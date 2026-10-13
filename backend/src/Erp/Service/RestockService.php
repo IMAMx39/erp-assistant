@@ -57,7 +57,9 @@ final class RestockService
                 'stock_maximum' => $rule->getMaximum(),
                 'en_commande_non_recue' => $incoming,
                 'quantite_suggeree' => $quantity,
-                'unite_achat' => $article->getPurchaseUnit() ?? $article->getStockUnit(),
+                'unite' => $article->getStockUnit(),
+                // Ex. 144 paires = 12 « carton de 12 » : la quantité est en unités de stock.
+                'soit_en_unites_achat' => $article->getPurchaseUnit() === null ? null : sprintf('%d × %s', intdiv($quantity, $factor), $article->getPurchaseUnit()),
                 'fournisseur_principal' => $supplier?->getCode(),
                 'remarque' => $supplier === null
                     ? 'Aucun fournisseur principal : à traiter manuellement'

@@ -17,20 +17,21 @@ class CustomerOrderLine
     public function __construct(
         #[ORM\ManyToOne(inversedBy: 'lines')]
         #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-        private CustomerOrder $order,
+        private readonly CustomerOrder $order,
         #[ORM\ManyToOne]
         #[ORM\JoinColumn(nullable: false)]
-        private Article $article,
+        private readonly Article       $article,
         #[ORM\Column]
-        private int $quantity,
+        private readonly int           $quantity,
         #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2)]
-        private string $unitPrice,
+        private readonly string        $unitPrice,
         /** Quantité réservée à la validation ; le reste de la ligne est en reliquat */
         #[ORM\Column]
-        private int $reservedQuantity = 0,
+        private readonly int           $reservedQuantity = 0,
         #[ORM\Column]
-        private int $shippedQuantity = 0,
-    ) {
+        private readonly int           $shippedQuantity = 0,
+    )
+    {
     }
 
     public function getBackorderQuantity(): int

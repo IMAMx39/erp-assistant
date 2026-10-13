@@ -21,7 +21,8 @@ final readonly class ChatEvent
      */
     public function __construct(
         public string $type,
-        public mixed $data,
-    ) {
+        public mixed  $data,
+    )
+    {
     }
 }

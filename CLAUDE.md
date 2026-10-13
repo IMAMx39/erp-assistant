@@ -99,7 +99,7 @@ Autres dossiers : `corpus/` (documentation Markdown), `evals/` (promptfoo), `fro
 - [x] **J5** — Interface de chat Next.js avec affichage des sources. → **v1 présentable**.
 - [x] **J6** — Jeu d'évaluation (54 questions), promptfoo, mesure de référence (`evals/results/baseline.md`) : 94 % de réussite complète, 100 % de refus justes, 3 échecs dus à la recherche. **Prioritaire : ne jamais sacrifier.**
 - [x] **J7** — Recherche hybride (FULLTEXT MariaDB + vecteurs, fusion RRF) et reranking, puis nouvelle mesure (`evals/results/j7-recherche.md`) : section trouvée 93 % → 100 %, MRR 0,82 → 0,99 ; mode par défaut `hybrid_rerank`. **Reste à faire** : la mesure complète des réponses (`make eval MODE=hybrid_rerank EVAL_DELAY=18000`), interrompue par le quota Groq après 26/54 questions, toutes réussies.
-- [ ] **J8** — ERP fictif (entités + fixtures cohérentes avec le corpus), outils de l'agent, tool calling.
+- [x] **J8** — ERP fictif (entités + fixtures cohérentes avec le corpus), outils de l'agent, tool calling (`evals/results/j8-agent.md`) : 15 questions sur les données, bon outil et valeurs exactes 14/14 après corrections (gpt-oss-120b). Agent Claude vérifié hors ligne seulement.
 - [ ] **J9** — Serveur MCP (testé dans Claude Desktop), traces Langfuse (compose séparé). Sacrifiable si retard.
 - [ ] **J10** — CI GitHub Actions avec évaluation automatique, déploiement sur le serveur AWS, README (schéma d'architecture + résultats chiffrés).
 
@@ -126,3 +126,4 @@ Hors périmètre pour l'instant : multi-tenant.
 - Agent Claude : le message de l'assistant (réflexion signée comprise) doit être renvoyé à l'identique à chaque tour d'outils ; il est reconstitué par `MessageAccumulator` du SDK. Vérifié hors ligne (réponses simulées), pas encore avec l'API réelle.
 - Depuis `backend/`, `docker compose` lit `backend/compose.yaml` (fichier Postgres laissé par la recette Doctrine) au lieu du compose racine : lancer les commandes depuis la racine du projet.
 - En mode non-debug (`new Kernel('dev', false)`), Symfony réutilise un conteneur compilé ancien : utiliser le mode debug dans les scripts de test.
+- `docker compose run evals` redémarre ses dépendances (nginx, php) si leur configuration diffère : les cibles d'évaluation utilisent `--no-deps` (la pile doit déjà tourner, `make up`).

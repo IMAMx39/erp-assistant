@@ -6,6 +6,7 @@ namespace App\Chat\Generator;
 
 use App\Agent\Tool\AgentToolInterface;
 use App\Agent\ToolRegistry;
+use Psr\Log\LoggerInterface;
 use App\Chat\Dto\ChatEvent;
 use App\Chat\Dto\Citation;
 use App\Chat\Dto\GenerationResult;
@@ -41,6 +42,7 @@ final class ChatCompletionsAnswerGenerator implements AnswerGeneratorInterface
         private readonly HttpClientInterface $httpClient,
         private readonly PromptBuilder $promptBuilder,
         private readonly ToolRegistry $tools,
+        private readonly LoggerInterface $logger,
         private readonly string $provider,
         private readonly string $url,
         private readonly string $model,
@@ -183,6 +185,11 @@ final class ChatCompletionsAnswerGenerator implements AnswerGeneratorInterface
 
                 /** @var array{choices?: list<array{delta?: array{content?: mixed, tool_calls?: list<array<string, mixed>>}, finish_reason?: ?string}>, usage?: array{prompt_tokens?: int, completion_tokens?: int}, x_groq?: array{usage?: array{prompt_tokens?: int, completion_tokens?: int}}} $payload */
                 $payload = json_decode($data, true, flags: \JSON_THROW_ON_ERROR);
+                if (isset($payload['error'])) {
+                    // Détail dans le message : le logger par défaut de Symfony n'affiche pas le contexte.
+                    $this->logger->error(sprintf('Erreur transmise dans le flux par %s : %s', $this->provider, json_encode($payload['error'], \JSON_UNESCAPED_UNICODE)));
+                    throw new GenerationFailedException(sprintf('%s a interrompu la réponse sur une erreur.', $this->provider), 502);
+                }
                 $choice = $payload['choices'][0] ?? [];
 
                 $content = $this->text($choice['delta']['content'] ?? '');

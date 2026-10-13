@@ -18,16 +18,17 @@ class Location
     public function __construct(
         #[ORM\ManyToOne]
         #[ORM\JoinColumn(nullable: false)]
-        private Warehouse $warehouse,
+        private readonly Warehouse    $warehouse,
         /** Format ALLEE-RAYON-NIVEAU, ex. A-03-2 ; « QUAI » pour la zone de réception */
         #[ORM\Column(length: 20)]
-        private string $code,
+        private readonly string       $code,
         #[ORM\Column(length: 20, enumType: LocationType::class)]
-        private LocationType $type = LocationType::Storage,
+        private readonly LocationType $type = LocationType::Storage,
         /** Gelé pendant un inventaire : aucun mouvement possible */
         #[ORM\Column]
-        private bool $frozen = false,
-    ) {
+        private readonly bool         $frozen = false,
+    )
+    {
     }
 
     public function getId(): ?int

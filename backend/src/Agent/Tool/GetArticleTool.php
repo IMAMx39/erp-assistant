@@ -8,13 +8,14 @@ use App\Erp\Entity\StockRule;
 use App\Erp\Service\StockService;
 use Doctrine\ORM\EntityManagerInterface;
 
-final class GetArticleTool implements AgentToolInterface
+final readonly class GetArticleTool implements AgentToolInterface
 {
     public function __construct(
-        private readonly ArticleLookup $articles,
-        private readonly StockService $stockService,
-        private readonly EntityManagerInterface $entityManager,
-    ) {
+        private ArticleLookup          $articles,
+        private StockService           $stockService,
+        private EntityManagerInterface $entityManager,
+    )
+    {
     }
 
     public function name(): string
@@ -25,8 +26,8 @@ final class GetArticleTool implements AgentToolInterface
     public function description(): string
     {
         return "Fiche d'un article à partir de son code (ART-xxxxx) : libellé, famille, statut (actif, bloqué à la vente, archivé), "
-            .'prix de vente HT, TVA, fournisseur principal, unités, et stock par entrepôt (physique, réservé, disponible, '
-            .'en litige, en transit) avec les stocks minimum et maximum.';
+            . 'prix de vente HT, TVA, fournisseur principal, unités, et stock par entrepôt (physique, réservé, disponible, '
+            . 'en litige, en transit) avec les stocks minimum et maximum. Outil à utiliser pour le stock disponible ou réservé.';
     }
 
     public function parameters(): array
@@ -44,7 +45,7 @@ final class GetArticleTool implements AgentToolInterface
     {
         $article = $this->articles->find($arguments['code'] ?? null);
         if ($article === null) {
-            return ['erreur' => sprintf('Aucun article avec le code « %s ».', (string) ($arguments['code'] ?? ''))];
+            return ['erreur' => sprintf('Aucun article avec le code « %s ».', (string)($arguments['code'] ?? ''))];
         }
 
         $stock = $this->stockService->byWarehouse($article);
@@ -58,8 +59,8 @@ final class GetArticleTool implements AgentToolInterface
             'libelle' => $article->getLabel(),
             'famille' => $article->getFamily(),
             'statut' => $article->getStatus()->label(),
-            'prix_vente_ht' => (float) $article->getSalePrice(),
-            'taux_tva' => (float) $article->getVatRate(),
+            'prix_vente_ht' => (float)$article->getSalePrice(),
+            'taux_tva' => (float)$article->getVatRate(),
             'unite_stock' => $article->getStockUnit(),
             'unite_achat' => $article->getPurchaseUnit(),
             'coefficient_conversion' => $article->getConversionFactor(),

@@ -14,7 +14,8 @@ final class GetPurchaseOrderTool implements AgentToolInterface
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-    ) {
+    )
+    {
     }
 
     public function name(): string
@@ -25,7 +26,7 @@ final class GetPurchaseOrderTool implements AgentToolInterface
     public function description(): string
     {
         return "Détail d'une commande fournisseur à partir de son numéro (CF-xxxxx) : statut, fournisseur, entrepôt, date prévue, "
-            .'montant HT, lignes avec quantités commandées, reçues et reliquat restant à recevoir, et validation requise.';
+            . 'montant HT, lignes avec quantités commandées, reçues et reliquat restant à recevoir, et validation requise.';
     }
 
     public function parameters(): array
@@ -60,13 +61,13 @@ final class GetPurchaseOrderTool implements AgentToolInterface
             'validation_requise' => $total >= self::ADMIN_APPROVAL_THRESHOLD
                 ? 'Responsable logistique et Administrateur (montant HT de 5 000 € ou plus)'
                 : 'Responsable logistique',
-            'lignes' => array_map(static fn ($line): array => [
+            'lignes' => array_map(static fn($line): array => [
                 'article' => $line->getArticle()->getCode(),
                 'libelle' => $line->getArticle()->getLabel(),
                 'commandee' => $line->getQuantity(),
                 'recue' => $line->getReceivedQuantity(),
                 'reliquat' => $line->getRemainingQuantity(),
-                'prix_unitaire_ht' => (float) $line->getUnitPrice(),
+                'prix_unitaire_ht' => (float)$line->getUnitPrice(),
             ], $order->getLines()->toArray()),
         ];
     }

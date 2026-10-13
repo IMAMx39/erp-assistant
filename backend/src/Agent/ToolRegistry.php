@@ -21,9 +21,10 @@ final class ToolRegistry
      */
     public function __construct(
         #[AutowireIterator(AgentToolInterface::class)]
-        iterable $tools,
+        iterable                         $tools,
         private readonly LoggerInterface $logger,
-    ) {
+    )
+    {
         foreach ($tools as $tool) {
             $this->tools[$tool->name()] = $tool;
         }

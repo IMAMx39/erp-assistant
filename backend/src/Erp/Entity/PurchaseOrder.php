@@ -23,20 +23,21 @@ class PurchaseOrder
     public function __construct(
         /** CF- + numéro */
         #[ORM\Column(length: 12, unique: true)]
-        private string $number,
+        private readonly string              $number,
         #[ORM\ManyToOne]
         #[ORM\JoinColumn(nullable: false)]
-        private Supplier $supplier,
+        private readonly Supplier            $supplier,
         #[ORM\ManyToOne]
         #[ORM\JoinColumn(nullable: false)]
-        private Warehouse $warehouse,
+        private readonly Warehouse           $warehouse,
         #[ORM\Column(length: 20, enumType: PurchaseOrderStatus::class)]
-        private PurchaseOrderStatus $status,
+        private readonly PurchaseOrderStatus $status,
         #[ORM\Column]
-        private \DateTimeImmutable $orderedAt,
+        private readonly \DateTimeImmutable  $orderedAt,
         #[ORM\Column(nullable: true)]
-        private ?\DateTimeImmutable $expectedAt = null,
-    ) {
+        private readonly ?\DateTimeImmutable $expectedAt = null,
+    )
+    {
         $this->lines = new ArrayCollection();
     }
 
@@ -54,7 +55,7 @@ class PurchaseOrder
     {
         $total = 0.0;
         foreach ($this->lines as $line) {
-            $total += $line->getQuantity() * (float) $line->getUnitPrice();
+            $total += $line->getQuantity() * (float)$line->getUnitPrice();
         }
 
         return round($total, 2);

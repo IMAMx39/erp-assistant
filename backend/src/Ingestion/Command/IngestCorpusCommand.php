@@ -24,10 +24,11 @@ final class IngestCorpusCommand extends Command
 {
     public function __construct(
         private readonly MessageBusInterface $messageBus,
-        private readonly DocumentRepository $documentRepository,
+        private readonly DocumentRepository  $documentRepository,
         #[Autowire('%env(CORPUS_DIR)%')]
-        private readonly string $corpusDir,
-    ) {
+        private readonly string              $corpusDir,
+    )
+    {
         parent::__construct();
     }
 
@@ -65,7 +66,7 @@ final class IngestCorpusCommand extends Command
             return Command::FAILURE;
         }
 
-        $force = (bool) $input->getOption('force');
+        $force = (bool)$input->getOption('force');
         foreach ($paths as $path) {
             $this->messageBus->dispatch(new IngestDocument($path, $force));
         }

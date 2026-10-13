@@ -21,8 +21,9 @@ final class GetStockTool implements AgentToolInterface
 
     public function description(): string
     {
-        return "Détail du stock d'un article emplacement par emplacement (ex. A-03-2, QUAI), avec le statut de chaque quantité "
-            .'(disponible, litige, en transit) et les emplacements gelés par un inventaire. Filtrable par entrepôt (ORL ou LYO).';
+        return "Localisation du stock physique d'un article, emplacement par emplacement (ex. A-03-2, QUAI), avec le statut de chaque "
+            .'quantité (disponible, litige, en transit) et les emplacements gelés par un inventaire. Filtrable par entrepôt (ORL ou LYO). '
+            .'Ne tient pas compte des réservations : pour le stock disponible ou réservé d\'un entrepôt, utiliser get_article.';
     }
 
     public function parameters(): array
@@ -31,7 +32,7 @@ final class GetStockTool implements AgentToolInterface
             'type' => 'object',
             'properties' => [
                 'code' => ['type' => 'string', 'description' => "Code de l'article, ex. ART-10452"],
-                'warehouse' => ['type' => 'string', 'enum' => ['ORL', 'LYO'], 'description' => 'Entrepôt (facultatif)'],
+                'warehouse' => ['type' => ['string', 'null'], 'enum' => ['ORL', 'LYO', null], 'description' => 'Entrepôt (facultatif)'],
             ],
             'required' => ['code'],
         ];
@@ -65,6 +66,7 @@ final class GetStockTool implements AgentToolInterface
             'article' => $article->getCode(),
             'libelle' => $article->getLabel(),
             'unite_stock' => $article->getStockUnit(),
+            'remarque' => 'Quantités physiques par emplacement, avant réservations. Stock disponible (physique − réservé) : voir get_article.',
             'emplacements' => $locations,
         ];
     }

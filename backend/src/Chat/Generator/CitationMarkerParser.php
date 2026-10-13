@@ -49,7 +49,7 @@ final class CitationMarkerParser
         while (preg_match(self::MARKER, $this->buffer, $match, \PREG_OFFSET_CAPTURE) === 1) {
             [$marker, $offset] = $match[0];
 
-            $before = (string) preg_replace('/\h+$/u', '', substr($this->buffer, 0, $offset));
+            $before = (string)preg_replace('/\h+$/u', '', substr($this->buffer, 0, $offset));
             if ($before !== '') {
                 $tokens[] = ['type' => 'text', 'text' => $before];
             }

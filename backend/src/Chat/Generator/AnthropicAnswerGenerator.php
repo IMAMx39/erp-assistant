@@ -44,17 +44,18 @@ final class AnthropicAnswerGenerator implements AnswerGeneratorInterface
     private const MAX_TOOL_ROUNDS = 5;
 
     public function __construct(
-        private readonly Client $anthropic,
+        private readonly Client        $anthropic,
         private readonly PromptBuilder $promptBuilder,
-        private readonly ToolRegistry $tools,
+        private readonly ToolRegistry  $tools,
         #[Autowire('%env(ANTHROPIC_MODEL)%')]
-        private readonly string $model,
-    ) {
+        private readonly string        $model,
+    )
+    {
     }
 
     public function generate(string $question, array $sources): \Generator
     {
-        $tools = array_map(static fn (AgentToolInterface $tool): array => [
+        $tools = array_map(static fn(AgentToolInterface $tool): array => [
             'name' => $tool->name(),
             'description' => $tool->description(),
             'inputSchema' => $tool->parameters(),
@@ -87,7 +88,7 @@ final class AnthropicAnswerGenerator implements AnswerGeneratorInterface
                     $accumulator->accumulate($event);
 
                     if ($event instanceof RawMessageStartEvent) {
-                        $inputTokens += (int) $event->message->usage->inputTokens;
+                        $inputTokens += (int)$event->message->usage->inputTokens;
                     } elseif ($event instanceof RawContentBlockDeltaEvent && $event->delta instanceof TextDelta) {
                         yield new ChatEvent(ChatEvent::DELTA, ['block' => $blockOffset + $event->index, 'text' => $event->delta->text]);
                     } elseif ($event instanceof RawContentBlockDeltaEvent && $event->delta instanceof CitationsDelta) {
@@ -105,7 +106,7 @@ final class AnthropicAnswerGenerator implements AnswerGeneratorInterface
 
                 $message = $accumulator->message();
                 $blockOffset += \count($message->content);
-                $toolUses = array_values(array_filter($message->content, static fn (object $block): bool => $block instanceof ToolUseBlock));
+                $toolUses = array_values(array_filter($message->content, static fn(object $block): bool => $block instanceof ToolUseBlock));
 
                 if ($stopReason !== 'tool_use' || $toolUses === []) {
                     break;
@@ -113,7 +114,7 @@ final class AnthropicAnswerGenerator implements AnswerGeneratorInterface
 
                 // Message de l'assistant renvoyé tel quel (réflexion comprise), puis les résultats des outils.
                 $messages[] = ['role' => 'assistant', 'content' => array_map(
-                    static fn (object $block): mixed => $block instanceof \JsonSerializable ? $block->jsonSerialize() : $block,
+                    static fn(object $block): mixed => $block instanceof \JsonSerializable ? $block->jsonSerialize() : $block,
                     $message->content,
                 )];
 

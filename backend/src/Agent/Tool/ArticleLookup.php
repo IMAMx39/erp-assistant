@@ -10,11 +10,12 @@ use App\Erp\Repository\ArticleRepository;
 /**
  * Recherche d'un article par son code, partagée par les outils.
  */
-final class ArticleLookup
+final readonly class ArticleLookup
 {
     public function __construct(
-        private readonly ArticleRepository $articleRepository,
-    ) {
+        private ArticleRepository $articleRepository,
+    )
+    {
     }
 
     public function find(mixed $code): ?Article

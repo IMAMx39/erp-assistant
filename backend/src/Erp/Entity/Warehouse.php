@@ -16,10 +16,11 @@ class Warehouse
     public function __construct(
         /** ORL ou LYO */
         #[ORM\Column(length: 3, unique: true)]
-        private string $code,
+        private readonly string $code,
         #[ORM\Column(length: 100)]
-        private string $name,
-    ) {
+        private readonly string $name,
+    )
+    {
     }
 
     public function getId(): ?int

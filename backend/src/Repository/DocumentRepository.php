@@ -31,7 +31,7 @@ class DocumentRepository extends ServiceEntityRepository
      */
     public function deleteMissing(array $existingPaths): int
     {
-        return (int) $this->createQueryBuilder('d')
+        return (int)$this->createQueryBuilder('d')
             ->delete()
             ->where('d.path NOT IN (:paths)')
             ->setParameter('paths', $existingPaths)
