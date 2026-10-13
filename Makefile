@@ -37,7 +37,7 @@ ollama-pull:
 # Offre gratuite de Groq : 8 000 tokens/min et ~750 tokens par question, d'où une question toutes les 6 s.
 # MODE : mode de recherche évalué (vector, hybrid, hybrid_rerank).
 EVAL_DELAY ?= 6000
-MODE ?= vector
+MODE ?= hybrid_rerank
 eval:
 	@rm -f evals/results/latest.json evals/results/latest.html
 	-docker compose --profile evals run --rm evals eval -c promptfooconfig.yaml --no-cache -j 1 --delay $(EVAL_DELAY) --var mode=$(MODE) -o results/latest.json -o results/latest.html

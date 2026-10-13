@@ -96,7 +96,7 @@ Autres dossiers : `corpus/` (documentation Markdown), `evals/` (promptfoo), `fro
 - [x] **J4** — Génération (Claude, ou Groq/Mistral/Ollama via `LLM_PROVIDER`), citation des sources, refus si l'information est absente, streaming SSE (en-tête `X-Accel-Buffering: no` pour nginx). Validé avec Groq (`qwen/qwen3.8-27b`) ; Claude non testé en réel faute de crédit.
 - [x] **J5** — Interface de chat Next.js avec affichage des sources. → **v1 présentable**.
 - [x] **J6** — Jeu d'évaluation (54 questions), promptfoo, mesure de référence (`evals/results/baseline.md`) : 94 % de réussite complète, 100 % de refus justes, 3 échecs dus à la recherche. **Prioritaire : ne jamais sacrifier.**
-- [ ] **J7** — Recherche hybride (FULLTEXT MariaDB + vecteurs, fusion RRF) et reranking, puis nouvelle mesure.
+- [x] **J7** — Recherche hybride (FULLTEXT MariaDB + vecteurs, fusion RRF) et reranking, puis nouvelle mesure (`evals/results/j7-recherche.md`) : section trouvée 93 % → 100 %, MRR 0,82 → 0,99 ; mode par défaut `hybrid_rerank`. **Reste à faire** : la mesure complète des réponses (`make eval MODE=hybrid_rerank EVAL_DELAY=18000`), interrompue par le quota Groq après 26/54 questions, toutes réussies.
 - [ ] **J8** — ERP fictif (entités + fixtures cohérentes avec le corpus), outils de l'agent, tool calling.
 - [ ] **J9** — Serveur MCP (testé dans Claude Desktop), traces Langfuse (compose séparé). Sacrifiable si retard.
 - [ ] **J10** — CI GitHub Actions avec évaluation automatique, déploiement sur le serveur AWS, README (schéma d'architecture + résultats chiffrés).
@@ -115,7 +115,7 @@ Hors périmètre pour l'instant : multi-tenant.
 - L'embedding est `NOT NULL` : il est calculé dans le handler avant le flush. Si Ollama ne répond pas, le message part dans la file `failed` après 3 essais (`php bin/console messenger:failed:retry`).
 - Après la recréation du conteneur `php`, nginx garde l'ancienne IP et renvoie 502 : `docker compose restart nginx`.
 - Les générateurs Chat Completions sont déclarés avec `autoconfigure: false` : sinon l'autoconfiguration leur ajoute une seconde étiquette sans `key` et `LLM_PROVIDER` ne les trouve plus.
-- Offre gratuite de Groq : 8 000 tokens/min et 1 000 requêtes/jour. `make eval` envoie une question toutes les 6 s (`EVAL_DELAY`) ; l'option `delay` du fichier promptfoo est ignorée, d'où son passage en ligne de commande.
+- Offre gratuite de Groq : 8 000 tokens/min, 1 000 requêtes/jour et **200 000 tokens/jour par modèle** (quota absent des en-têtes `x-ratelimit`, visible seulement dans le corps de l'erreur 429). Un `make eval MODE=hybrid_rerank` consomme ~95 000 tokens : au plus deux mesures complètes par jour. `make eval` envoie une question toutes les 6 s (`EVAL_DELAY`) ; l'option `delay` du fichier promptfoo est ignorée, d'où son passage en ligne de commande.
 - promptfoo démultiplie les variables de type liste en plusieurs tests : `PROMPTFOO_DISABLE_VAR_EXPANSION=1` dans le service `evals`.
 - La liste de mots vides d'InnoDB est anglaise : `FulltextRetriever` retire lui-même les mots vides français de la question (sans « avoir », terme métier).
 - Sur ce corpus, la recherche plein texte seule n'apporte rien (pas de racinisation) : son intérêt est d'élargir le vivier de 10 candidats soumis au reclassement. Le reclassement par LLM ajoute ~1 500 tokens Groq par question.

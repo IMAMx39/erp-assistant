@@ -90,9 +90,14 @@ final class LlmReranker
             'timeout' => 30,
         ]);
 
-        /** @var array{choices?: list<array{message?: array{content?: string}}>} $body */
+        /** @var array{choices?: list<array{message?: array{content?: string}}>, usage?: array{prompt_tokens?: int, completion_tokens?: int}} $body */
         $body = $response->toArray();
         $content = $body['choices'][0]['message']['content'] ?? '';
+        $this->logger->info('Reclassement des extraits', [
+            'candidats' => \count($candidates),
+            'tokens_entree' => $body['usage']['prompt_tokens'] ?? null,
+            'tokens_sortie' => $body['usage']['completion_tokens'] ?? null,
+        ]);
         /** @var array{ranking?: mixed} $decoded */
         $decoded = json_decode($content, true, flags: \JSON_THROW_ON_ERROR);
 

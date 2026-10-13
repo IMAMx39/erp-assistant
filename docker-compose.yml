@@ -21,7 +21,7 @@ x-php: &php
     MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
     MISTRAL_MODEL: ${MISTRAL_MODEL:-mistral-small-latest}
     OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-llama3.2:3b}
-    RETRIEVAL_MODE: ${RETRIEVAL_MODE:-vector}
+    RETRIEVAL_MODE: ${RETRIEVAL_MODE:-hybrid_rerank}
     RERANK_MODEL: ${RERANK_MODEL:-qwen/qwen3.8-27b}
   extra_hosts:
     - "host.docker.internal:host-gateway"
